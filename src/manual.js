@@ -1,6 +1,6 @@
 // 人工調課：移動一堂課到目標時段，檢查班級/教師/教室衝突
 export function moveLesson(schedule, index, target) {
-  const next = [...schedule];
+  const next = schedule.map(lesson => ({ ...lesson }));
   const lesson = next[index];
   if (!lesson || lesson.status !== 'done') return next;
 

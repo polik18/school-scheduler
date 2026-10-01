@@ -1,7 +1,6 @@
-import * as XLSX from 'xlsx';
 import {mapLegacyInput} from './model/schema.js';
 
-function sheet(wb,names){
+function sheet(XLSX,wb,names){
  const name=names.find(n=>wb.Sheets[n]);
  return name?XLSX.utils.sheet_to_json(wb.Sheets[name]):[];
 }
@@ -10,15 +9,17 @@ function normalize(rows){return rows.map(r=>Object.fromEntries(Object.entries(r)
 export function readSchoolExcel(file){
  return new Promise((resolve,reject)=>{
   const r=new FileReader();
-  r.onload=e=>{
+  r.onload=async e=>{
    try{
+    const XLSX=await import('xlsx');
     const wb=XLSX.read(e.target.result,{type:'array'});
     resolve(mapLegacyInput({
-     classes:normalize(sheet(wb,['Classes','班級'])),
-     teachers:normalize(sheet(wb,['Teachers','教師'])),
-     courses:normalize(sheet(wb,['Courses','課程'])),
-     availability:normalize(sheet(wb,['TeacherAvailability','教師可用時間'])),
-     rooms:normalize(sheet(wb,['Rooms','教室']))
+     classes:normalize(sheet(XLSX,wb,['Classes','班級'])),
+     teachers:normalize(sheet(XLSX,wb,['Teachers','教師'])),
+     courses:normalize(sheet(XLSX,wb,['Courses','課程'])),
+     availability:normalize(sheet(XLSX,wb,['TeacherAvailability','教師可用時間'])),
+     rooms:normalize(sheet(XLSX,wb,['Rooms','教室'])),
+     fixed:normalize(sheet(XLSX,wb,['FixedActivities','固定活動']))
     }));
    }catch(err){reject(err)}
   };

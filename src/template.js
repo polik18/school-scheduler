@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
-
-export function createTemplate(){
+export async function createTemplate(){
+ const XLSX=await import('xlsx');
  const wb=XLSX.utils.book_new();
  const sheets={
   Classes:[{class_id:'601',grade:'六年級',class_name:'601',students:30}],

@@ -1,7 +1,6 @@
-import * as XLSX from 'xlsx';
-
 // 匯出課表：班級／教師／教室／完整排課／驗收報告
-export function downloadExcel(schedule, rep = {}) {
+export async function downloadExcel(schedule, rep = {}) {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
   const add = (n, d) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d), n);
   add('完整排課', schedule);

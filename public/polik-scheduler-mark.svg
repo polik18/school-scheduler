@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Polik Scheduler</title>
+  <desc id="desc">森林綠課表格線與橘色課程區塊</desc>
+  <rect width="64" height="64" rx="18" fill="#174f3c"/>
+  <rect x="13" y="14" width="38" height="37" rx="7" fill="#fffdf8"/>
+  <path d="M13 25h38M25.7 25v26M38.3 25v26M13 38h38" fill="none" stroke="#b8d8c9" stroke-width="2"/>
+  <rect x="28" y="28" width="8" height="7" rx="2" fill="#335f83"/>
+  <rect x="41" y="41" width="7" height="7" rx="2" fill="#e77732"/>
+  <path d="M22 11v8M42 11v8" stroke="#fffdf8" stroke-width="4" stroke-linecap="round"/>
+</svg>

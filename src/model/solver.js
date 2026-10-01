@@ -92,6 +92,11 @@ export function solveSchedule(input) {
     delete clsSlot[key(course.class, slot.day, slot.period)];
     delete teacherSlot[key(course.teacher, slot.day, slot.period)];
     if (course.room_id) delete roomSlot[key(course.room_id, slot.day, slot.period)];
+    course.status = 'pending';
+    delete course.day;
+    delete course.period;
+    delete course.room_id;
+    delete course.locked;
   };
 
   const collect = () => Object.values(clsSlot);

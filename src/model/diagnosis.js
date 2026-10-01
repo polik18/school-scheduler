@@ -15,10 +15,9 @@ function roomCandidates(course, rooms, day, period) {
 function teacherFree(teacher, avail, day, period) {
   const t = avail.find(a => a.teacher_id === teacher);
   if (!t) return { ok: true };
-  const unavail = new Set();
-  (t.unavailable || []).forEach(u => {
-    if (u.weekday === day && u.period === period) return { ok: false, reason: '教師該時段不可用' };
-  });
+  const blocked = (t.unavailable || []).some(u =>
+    u.weekday === day && Number(u.period) === Number(period));
+  if (blocked) return { ok: false, reason: '教師該時段不可用' };
   return { ok: true };
 }
 
