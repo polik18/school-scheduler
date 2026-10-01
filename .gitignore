@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+.DS_Store
+*.log
+.env
+.env.*
+out.xlsx
+school-result.xlsx
+coverage/
