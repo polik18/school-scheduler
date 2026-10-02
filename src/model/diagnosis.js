@@ -46,7 +46,7 @@ export function courseFeasibility(course, input) {
 
 // 針對一門未排入的課程，診斷原因
 export function diagnosePendingCourse(course, input) {
-  const { teachers = [], rooms = [], fixed = [], classes = [] } = input;
+  const { teachers = [], rooms = [], fixed = [], classes = [], days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] } = input;
   const reasons = [];
 
   // 1. 教師是否存在
@@ -61,8 +61,8 @@ export function diagnosePendingCourse(course, input) {
     reasons.push({ level: 'error',
       message: `找不到班級 "${course.class}"，請檢查班級資料表。` });
   }
-  // 3. 教師可用性
-  const anySlot = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].find(day =>
+  // 3. 教師可用性（依實際上課天數檢查）
+  const anySlot = days.find(day =>
     teachers.some(t => t.teacher_id === course.teacher &&
       !(t.unavailable || []).some(u => u.weekday === day)));
   if (tExist && !anySlot) {
@@ -81,11 +81,11 @@ export function diagnosePendingCourse(course, input) {
     const { feasible } = courseFeasibility(course, input);
     if (!feasible.length) {
       reasons.push({ level: 'warning',
-        message: `該課程在所有 ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].length} × 8 時段皆無法排入。` });
+        message: `該課程在所有 ${days.length} × 8 时段皆無法排入。` });
       // 深入：哪種類型的衝突最多
       const conflictDays = {};
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(day => {
-        const busy = input.courses.filter(c => c.class === course.class && c.day === day).length;
+      days.forEach(day => {
+        const busy = (input.courses || []).filter(c => c.class === course.class && c.day === day).length;
         if (busy) conflictDays[day] = busy;
       });
       reasons.push({ level: 'info',

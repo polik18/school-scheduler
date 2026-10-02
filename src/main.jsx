@@ -207,7 +207,7 @@ export default function App() {
 
           {schedule.pending?.length > 0 && <section className="panel">
             <div className="panel-heading"><span>05</span><div><h2>衝突診斷</h2><p>逐筆查看未排入課程可能碰到的限制。</p></div></div>
-            {schedule.pending.map((c, i) => <div key={i} className="diagnostic"><div className="diag-title">未排入：{c.class} {c.subject}（{c.teacher}）</div>{diagnosePendingCourse(c, { courses: data.courses, teachers: data.teachers, rooms: data.rooms, fixed: data.fixedActivities, classes: data.classes }).map((r, j) => <div key={j} className={`diag-${r.level}`}>{r.message}</div>)}</div>)}
+            {schedule.pending.map((c, i) => <div key={i} className="diagnostic"><div className="diag-title">未排入：{c.class} {c.subject}（{c.teacher}）</div>{diagnosePendingCourse(c, { courses: data.courses, teachers: data.teachers, rooms: data.rooms, fixed: data.fixedActivities, classes: data.classes, days: settings.days }).map((r, j) => <div key={j} className={`diag-${r.level}`}>{r.message}</div>)}</div>)}
           </section>}
 
           <section className="panel timetable-panel">
