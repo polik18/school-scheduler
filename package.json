@@ -10,6 +10,7 @@
     "test": "node --test tests/*.mjs",
     "test:demo": "node scripts/verify-large-example.mjs",
     "test:e2e": "npm run build && node scripts/e2e-browser.mjs",
+    "test:e2e:live": "node scripts/e2e-browser.mjs https://polik18.github.io/school-scheduler/",
     "build:demo": "node scripts/build-large-school-example.mjs"
   },
   "dependencies": {

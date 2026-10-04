@@ -24,11 +24,12 @@
 - `npm run test:demo`：54 班、630 課程列、846 節、0 pending，本機約 18.1 秒。
 - Preview HTTP smoke：首頁、兩份 XLSX 與對照 JSON 均 HTTP 200。
 - Browser E2E：PASS；無 page error 或 console error。
+- GitHub Actions：`Test` 與 `Deploy GitHub Pages` 對 commit `ce8e5dc` 均完成且 success。
+- GitHub Pages 線上 E2E：PASS；正式站完成 846 節排課、取消、66/70/40 配置簿與兩種匯出。
 - `npm ci`：0 vulnerabilities。
 
 ## 尚未執行
 
-- [ ] GitHub Pages 正式部署與線上 smoke test。
 - [ ] 「自動決定哪位教師教哪一班」的人力分配求解器；這需要資格、專長、志願、節數與減授等新輸入契約。
 
 ## 當前狀態

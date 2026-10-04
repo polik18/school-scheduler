@@ -15,9 +15,10 @@ const chromeCandidates = process.platform === 'win32'
 const executablePath = chromeCandidates.find(candidate => candidate && fs.existsSync(candidate));
 if (!executablePath) throw new Error('找不到 Chrome/Chromium；可設定 PLAYWRIGHT_CHROME_PATH。');
 
-const server = await preview({ root, logLevel: 'silent', preview: { host: '127.0.0.1', port: 4173, strictPort: false } });
-const address = server.httpServer.address();
-const baseURL = `http://127.0.0.1:${address.port}/`;
+const requestedURL = process.env.E2E_BASE_URL || process.argv[2];
+const server = requestedURL ? null : await preview({ root, logLevel: 'silent', preview: { host: '127.0.0.1', port: 4173, strictPort: false } });
+const address = server?.httpServer.address();
+const baseURL = requestedURL ? new URL(requestedURL).href : `http://127.0.0.1:${address.port}/`;
 const browser = await chromium.launch({ executablePath, headless: true, args: ['--disable-gpu', '--no-sandbox'] });
 const context = await browser.newContext({ acceptDownloads: true });
 const errors = [];
@@ -87,5 +88,5 @@ try {
 } finally {
   await context.close();
   await browser.close();
-  await server.close();
+  await server?.close();
 }

@@ -68,6 +68,7 @@ npm run preview
 npm test              # 核心單元與 30 班效能測試
 npm run test:demo     # 54 班、846 節大型範例
 npm run test:e2e      # Chrome 匯入、排課、取消與匯出流程
+npm run test:e2e:live # 對正式 GitHub Pages 執行同一流程
 ```
 
 `test:e2e` 預設使用系統 Chrome；如果不在標準安裝路徑，請設定 `PLAYWRIGHT_CHROME_PATH`。
