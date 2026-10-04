@@ -161,7 +161,8 @@ export default function App() {
     setData(record.data);
     setSettings(record.settings || settings);
     setValidation(validateInput(record.data));
-    setSchedule({ success: true, schedule: record.schedule, pending: [], score: 0, diagnostics: [] });
+    setSchedule({ success: true, schedule: record.schedule, pending: [], score: 0, diagnostics: [],
+      searchStats: { method: record.schedule.length >= 600 ? 'constructive-restarts' : 'mrv-backtracking' } });
     setSelectedLesson(null);
     setStatus(`已載入版本「${name}」`);
   }, [settings]);
@@ -256,7 +257,7 @@ export default function App() {
             <div className="panel-heading"><span>04</span><div><h2>排課結果</h2><p>{schedule.success ? '排課核心已完成計算，可進一步檢查與匯出。' : '仍有課程未能排入，請查看衝突診斷。'}</p></div></div>
             <div className="result-stats"><div><strong>{schedule.quality?.completionPercent ?? (schedule.success ? 100 : 0)}%</strong><span>排入完成率</span></div><div><strong>{schedule.quality?.hardConflicts ?? 0}</strong><span>硬性衝突</span></div><div><strong>{schedule.quality?.distributionScore ?? 100}</strong><span>課程分散度（滿分 100）</span></div><div><strong>{((schedule.elapsedMs || 0) / 1000).toFixed(1)}s</strong><span>運算耗時</span></div></div>
             <details className="explain-card"><summary>品質指標如何計算？</summary><p><strong>排入完成率</strong>是已排入節數占全部需求節數；<strong>硬性衝突</strong>檢查班級、教師與專科教室是否同時重複；<strong>課程分散度</strong>會扣除同班同科集中在同一天的重複節數。100 分表示沒有這類重複，不代表已找到全球最佳課表。</p></details>
-            <details className="explain-card"><summary>系統使用什麼排課演算法？</summary><p>本系統使用<strong>限制滿足問題（CSP）</strong>搜尋：先排連堂、專科教室等較難課程，再用<strong>最少剩餘值（MRV）</strong>挑選可選時段最少的課程；遇到死路時以<strong>回溯搜尋</strong>撤回重試。時間到會保留目前找到的最佳無硬性衝突部分結果。這不是機器學習，也不保證全域最佳解。</p></details>
+            <details className="explain-card"><summary>系統使用什麼排課演算法？</summary><p>本系統將排課視為<strong>限制滿足問題（CSP）</strong>。小型資料使用<strong>最少剩餘值（MRV）＋回溯搜尋</strong>；600 節以上改用多次建構搜尋，先安排跨班教師、連堂與專科教室，再平衡班級及教師每日負載。本次使用：<strong>{schedule.searchStats?.method === 'constructive-restarts' ? '大型資料建構搜尋' : 'MRV 回溯搜尋'}</strong>。時間到會保留目前最佳的無基本時段衝突部分結果；這不是機器學習，也不保證全域最佳解。</p></details>
             {schedule.diagnostics?.map((item, i) => <div key={i} className="banner warn">{item.message}</div>)}
             <div className="row">
               <button className="btn" onClick={() => setStatus(schedule.success ? '排課成功，無硬性衝突。' : '尚有課程未排入，請檢視衝突診斷。')}>重新檢查結果</button>
@@ -541,7 +542,7 @@ function HelpCenter({ onClose }) {
         </div>}
         {tab === 'rules' && <div className="help-sections">
           <section><h3>系統會阻止哪些衝突？</h3><ul><li>同一班級、教師或專科教室在同一時段重複。</li><li>排入教師不可排時段、超過每日節數或最多連續節數。</li><li>連堂課被拆開，或固定活動已占用該時段。</li><li>課程要求的專科教室不存在或已被占用。</li></ul></section>
-          <section><h3>演算法</h3><p>系統把排課建模為限制滿足問題（CSP），先安排較難課程，再以最少剩餘值（MRV）選擇候選最少的任務；遇到死路就回溯重試。它不是生成式 AI，也不保證全域最佳解。</p></section>
+          <section><h3>演算法</h3><p>系統把排課建模為限制滿足問題（CSP）。未滿 600 節使用最少剩餘值（MRV）與回溯；600 節以上使用多次建構搜尋，優先安排跨班教師、連堂與專科教室，再平衡每日負載。兩種方式都會檢查相同硬限制；它不是生成式 AI，也不保證全域最佳解。</p></section>
           <section><h3>三個品質數字</h3><ul><li><strong>排入完成率：</strong>已排入節數占全部需求節數。</li><li><strong>硬性衝突：</strong>班級、教師、教室或鎖定資料的衝突總數，成功結果應為 0。</li><li><strong>課程分散度：</strong>同班同科集中於同一天會扣分；100 分只代表沒有這類重複。</li></ul></section>
         </div>}
         {tab === 'errors' && <div className="help-sections">

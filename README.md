@@ -68,7 +68,7 @@ npm run preview
 
 ```bash
 npm test              # 核心單元與 30 班效能測試
-npm run test:template # 60 班、924 節標準範本
+npm run test:template # 60 班、1620 節課綱擬真標準範本
 npm run test:capacity # 72 班超時／部分結果壓力門禁
 npm run test:e2e      # Chrome 匯入、排課、取消與匯出流程
 npm run test:e2e:live # 對正式 GitHub Pages 執行同一流程
@@ -104,4 +104,4 @@ docs/IMPORT_GUIDE.md  Excel 匯入簡易說明
 - **建構**：Vite 8（`@vitejs/plugin-react`）
 - **瀏覽器 E2E**：Playwright Core（使用系統 Chrome）
 - **版本**：3.1.0
-- **排課演算法**：限制滿足搜尋、最少剩餘值（MRV）與回溯；找到第一個完整可行解即停止，逾時保留目前最完整的無基本時段衝突部分結果，不宣稱全域最佳化
+- **排課演算法**：小型資料使用最少剩餘值（MRV）與回溯；600 節以上資料改用受限制的多次建構搜尋，優先處理跨班教師、連堂與專科教室，再平衡每日負載。兩者都只尋找可行解，不宣稱全域最佳化

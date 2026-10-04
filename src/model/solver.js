@@ -56,6 +56,8 @@ export function solveSchedule(input, options = {}) {
   const tAvail = teacherAvailability(teachers);
   const fixedOcc = fixedOccupancy(fixed);
   const teacherDayCount = {};
+  const classDayCount = {};
+  const classSubjectDayCount = {};
   const clsSlot = {}, teacherSlot = {}, roomSlot = {};
   const tasks = sortHardCourses(expandCourses(courses));
   const invalidLocks = [];
@@ -123,6 +125,10 @@ export function solveSchedule(input, options = {}) {
     task.placements = lessons;
     teacherDayCount[task.teacher] ||= {};
     teacherDayCount[task.teacher][start.day] = (teacherDayCount[task.teacher][start.day] || 0) + lessons.length;
+    classDayCount[task.class] ||= {};
+    classDayCount[task.class][start.day] = (classDayCount[task.class][start.day] || 0) + lessons.length;
+    const subjectDayKey = `${task.class}-${task.subject}-${start.day}`;
+    classSubjectDayCount[subjectDayKey] = (classSubjectDayCount[subjectDayKey] || 0) + lessons.length;
     lessons.forEach(lesson => {
       clsSlot[slotKey(task.class, lesson.day, lesson.period)] = lesson;
       teacherSlot[slotKey(task.teacher, lesson.day, lesson.period)] = lesson;
@@ -132,6 +138,8 @@ export function solveSchedule(input, options = {}) {
   const remove = task => {
     (task.placements || []).forEach(lesson => {
       teacherDayCount[task.teacher][lesson.day]--;
+      classDayCount[task.class][lesson.day]--;
+      classSubjectDayCount[`${task.class}-${task.subject}-${lesson.day}`]--;
       delete clsSlot[slotKey(task.class, lesson.day, lesson.period)];
       delete teacherSlot[slotKey(task.teacher, lesson.day, lesson.period)];
       if (lesson.room_id) delete roomSlot[slotKey(lesson.room_id, lesson.day, lesson.period)];
@@ -160,6 +168,57 @@ export function solveSchedule(input, options = {}) {
   });
   rememberBest();
 
+  // 大型學校先使用多次、可重現的建構式搜尋。逐層 MRV 對上千節資料會反覆
+  // 掃描全部剩餘任務；建構式搜尋優先處理跨班教師、專科教室與連堂課，
+  // 並以班級／教師日負載及同科分散度挑選時段，再由不同 tie-break 重試。
+  const constructLarge = remaining => {
+    const teacherClasses = {};
+    courses.forEach(course => (teacherClasses[course.teacher] ||= new Set()).add(course.class));
+    const difficulty = task =>
+      (task.duration > 1 ? 10000 : 0) +
+      (task.room_required && !['normal', 'none'].includes(task.room_required) ? 6000 : 0) +
+      ((teacherClasses[task.teacher]?.size || 1) - 1) * 300 +
+      (tAvail[task.teacher]?.unavail.size || 0) * 20;
+    const noise = (task, attempt) => {
+      let hash = 2166136261 ^ attempt;
+      for (const char of task.taskId) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+      return hash >>> 0;
+    };
+    const lockedIds = new Set(tasks.filter(task => task.status === 'done').map(task => task.taskId));
+    const resetAttempt = () => tasks.filter(task => task.status === 'done' && !lockedIds.has(task.taskId)).reverse().forEach(remove);
+    let attempt = 0;
+    while (Date.now() - startTime <= timeoutMs && attempt < 1000) {
+      resetAttempt();
+      const ordered = [...remaining].sort((a, b) => difficulty(b) - difficulty(a) || noise(a, attempt) - noise(b, attempt));
+      let failed = false;
+      for (const task of ordered) {
+        nodes++;
+        const list = candidates(task);
+        list.sort((a, b) => {
+          const cost = slot => {
+            const duration = task.duration || 1;
+            const repeated = classSubjectDayCount[`${task.class}-${task.subject}-${slot.day}`] || 0;
+            const classLoad = classDayCount[task.class]?.[slot.day] || 0;
+            const teacherLoad = teacherDayCount[task.teacher]?.[slot.day] || 0;
+            const tie = (days.indexOf(slot.day) * 11 + slot.period * 7 + attempt * 13) % 17;
+            return repeated * 100000 + (classLoad + duration) ** 2 * 100 + (teacherLoad + duration) ** 2 * 12 + slot.period * 2 + tie;
+          };
+          return cost(a) - cost(b);
+        });
+        if (!list.length) { failed = true; break; }
+        place(task, list[0], false);
+        rememberBest();
+      }
+      if (!failed) return true;
+      backtracks++;
+      attempt++;
+      reportProgress();
+    }
+    resetAttempt();
+    timedOut = Date.now() - startTime > timeoutMs;
+    return false;
+  };
+
   const search = remaining => {
     nodes++;
     reportProgress();
@@ -186,7 +245,10 @@ export function solveSchedule(input, options = {}) {
     return false;
   };
 
-  search(tasks.filter(t => t.status !== 'done'));
+  const remainingTasks = tasks.filter(t => t.status !== 'done');
+  const method = totalLessons >= 600 ? 'constructive-restarts' : 'mrv-backtracking';
+  if (method === 'constructive-restarts') constructLarge(remainingTasks);
+  else search(remainingTasks);
   const scheduledTaskIds = new Set(bestSchedule.map(x => x.taskId));
   const pending = tasks.filter(t => !scheduledTaskIds.has(t.taskId)).flatMap(task =>
     Array.from({ length: task.duration || 1 }, (_, offset) => ({ class: task.class, subject: task.subject, teacher: task.teacher, unit: task.unit + offset })));
@@ -200,6 +262,7 @@ export function solveSchedule(input, options = {}) {
     schedule: publicSchedule,
     score: scoreSchedule(publicSchedule), pending, diagnostics, timedOut,
     elapsedMs: Date.now() - startTime,
+    searchStats: { method, nodes, backtracks },
     quality: buildQualityReport(publicSchedule, pending, invalidLocks)
   };
   reportProgress(true);

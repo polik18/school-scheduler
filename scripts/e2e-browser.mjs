@@ -64,7 +64,7 @@ try {
   const scheduleFile = path.join(os.tmpdir(), `school-scheduler-template-${process.pid}.xlsx`);
   await templateDownload.saveAs(scheduleFile);
   await page.locator('input[type=file]').first().setInputFiles(scheduleFile);
-  await page.getByRole('status').filter({ hasText: '匯入完成：136 師 / 60 班 / 678 課' }).waitFor({ timeout: 15000 });
+  await page.getByRole('status').filter({ hasText: '匯入完成：136 師 / 60 班 / 580 課' }).waitFor({ timeout: 15000 });
   assert(await page.getByText('資料格式與必要欄位均已通過驗證。').isVisible(), '標準範本未通過驗證');
   await page.getByRole('button', { name: '執行智慧排課 →' }).click();
   await page.getByRole('button', { name: '取消排課' }).waitFor({ timeout: 5000 });
@@ -113,7 +113,7 @@ try {
   assert((await roundTripDownload.suggestedFilename()) === 'school-staffing-result.xlsx', '配置簿再匯出失敗');
 
   assert(errors.length === 0, `瀏覽器錯誤：\n${errors.join('\n')}`);
-  console.log(`Browser E2E PASS：標準範本 60 班、924 節、0 pending；取消可用；配置簿 66/70/40；兩種匯出可用。`);
+  console.log(`Browser E2E PASS：課綱擬真標準範本 60 班、1620 節、0 pending；取消可用；配置簿 66/70/40；兩種匯出可用。`);
 } finally {
   await context.close();
   await browser.close();

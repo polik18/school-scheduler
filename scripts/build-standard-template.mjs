@@ -13,47 +13,7 @@ const subjectRows = rows('科任教師');
 const adminRows = rows('行政與支援人員');
 
 const gradeNo = new Map([['一年級', 1], ['二年級', 2], ['三年級', 3], ['四年級', 4], ['五年級', 5], ['六年級', 6]]);
-const gradeAliases = { '中年級': [3, 4], '高年級': [5, 6] };
 const classId = (grade, number) => `${grade}${String(number).padStart(2, '0')}`;
-const allClasses = new Set(homeroomRows.map(r => {
-  const g = gradeNo.get(String(r[0]).trim());
-  const m = String(r[1]).match(/(\d+)年(\d+)班/);
-  return m ? classId(g, Number(m[2])) : '';
-}).filter(Boolean));
-
-function expandClassText(text) {
-  const result = [];
-  const gradePattern = /(一年級|二年級|三年級|四年級|五年級|六年級|中年級|高年級)/g;
-  const matches = [...String(text).matchAll(gradePattern)];
-  matches.forEach((match, index) => {
-    const grades = gradeAliases[match[1]] || [gradeNo.get(match[1])];
-    const end = index + 1 < matches.length ? matches[index + 1].index : String(text).length;
-    let tail = String(text).slice(match.index + match[1].length, end);
-    const numbers = [];
-    tail = tail.replace(/(\d+)\s*[~～－-]\s*(\d+)/g, (_, a, b) => {
-      for (let n = Number(a); n <= Number(b); n++) numbers.push(n);
-      return '';
-    });
-    for (const token of tail.matchAll(/\d+/g)) numbers.push(Number(token[0]));
-    const classNumbers = numbers.length ? [...new Set(numbers)] : [1, 2, 3, 4, 5, 6, 7, 8, 9];
-    grades.forEach(g => classNumbers.forEach(n => {
-      const id = classId(g, n);
-      if (allClasses.has(id) && !result.includes(id)) result.push(id);
-    }));
-  });
-  return result;
-}
-
-function assignmentSections(subjectText, assignmentText) {
-  const subjects = String(subjectText).split(/[\u3001,]/).map(x => x.trim()).filter(Boolean);
-  const segments = String(assignmentText).split(/[；;]/).map(x => x.trim()).filter(Boolean);
-  const withLabels = segments.map(segment => {
-    const match = segment.match(/^([^：:]+)[：:]\s*(.*)$/);
-    return match ? { subject: match[1].trim(), text: match[2].trim() } : null;
-  });
-  if (withLabels.some(Boolean)) return withLabels.filter(Boolean);
-  return subjects.length && assignmentText ? [{ subject: subjects[0], text: String(assignmentText) }] : [];
-}
 
 const classes = homeroomRows.map((r, index) => {
   const grade = String(r[0]).trim();
@@ -95,49 +55,54 @@ for (let grade = 1; grade <= 6; grade++) teachers.push({
   teacher_id, name, subject, max_daily_period: 8, max_continuous_period: 4, identity_note: '60 班跨班科任範例'
 }));
 
-// 來源沒有每週節數：標準範本以保守的演示節數補齊，不宣稱為實校課程計畫。
+// 依十二年國教總綱的國小領域節數與彈性學習區間建立完整週課表。
+// 這是合成示範配置，不代表任何特定學校核定的課程計畫。
 const courses = [];
-const mappingReport = [];
-classes.forEach(c => {
-  courses.push({ class: c.class_id, subject: '國語（範例）', teacher: c.homeroom_teacher, weekly_period: 3, room_required: 'normal', double_period: false });
-  courses.push({ class: c.class_id, subject: '數學（範例）', teacher: c.homeroom_teacher, weekly_period: 3, room_required: 'normal', double_period: false });
-});
-subjectRows.forEach((r, index) => {
-  const teacher = `S${String(index + 1).padStart(3, '0')}`;
-  const sections = assignmentSections(r[2], r[3]).map(section => ({
-    ...section, classes: expandClassText(section.text)
-  }));
-  sections.forEach(section => {
-    section.classes.forEach(cls => courses.push({
-      class: cls, subject: section.subject, teacher, weekly_period: 1,
-      room_required: 'normal', double_period: false
-    }));
+const specialistPools = {
+  local: ['S001','S002','S003','S004'],
+  english: ['S005','S006','S007','S008'],
+  science: ['S009','S010','S011','S012','S013','S014','S015','S016'],
+  arts: ['S017','S018','S019','S020','S021','S022','S023','S024'],
+  pe: ['S025','S026','S027','S028','S029','S030','S031','S032']
+};
+for (const [kind, ids] of Object.entries(specialistPools)) {
+  const subject = { local:'本土語文', english:'英語文', science:'自然科學', arts:'藝術', pe:'體育' }[kind];
+  ids.forEach((id, index) => {
+    const teacher = teachers.find(item => item.teacher_id === id);
+    if (teacher) Object.assign(teacher, {
+      name: `${subject}科任${String(index + 1).padStart(2, '0')}`, subject,
+      max_daily_period: 6, max_continuous_period: 3, identity_note: '60 班課綱擬真合成配置'
+    });
   });
-  mappingReport.push({
-    source_row: index + 2, teacher_id: teacher, teacher_name: String(r[1]).trim(),
-    source_subject: String(r[2]).trim(), source_assignment: String(r[3]).trim(), sections,
-    status: sections.some(section => section.classes.length) ? 'expanded' : 'non_timetable_support'
-  });
-});
-
-for (let grade = 1; grade <= 6; grade++) {
-  const cls = classId(grade, 10);
-  const add = (subject, teacher, weekly_period = 1, room_required = 'normal', double_period = false) =>
-    courses.push({ class: cls, subject, teacher, weekly_period, room_required, double_period });
-  add('英語', 'X001');
-  add('自然', 'X002', 2, '實驗教室', true);
-  add('體育', 'X003', 1, '體育場');
-  add('音樂', 'X004', 1, '音樂教室');
-  add('資訊', 'X005', 1, '電腦教室');
-  add('本土語', 'X006');
 }
+const pick = (pool, grade, number) => pool[((grade - 1) * 10 + number - 1) % pool.length];
+classes.forEach(c => {
+  const grade = Number(String(c.class_id)[0]);
+  const number = Number(String(c.class_id).slice(1));
+  const addCourse = (subject, teacher, weekly_period, room_required = 'normal', double_period = false) =>
+    courses.push({ class: c.class_id, subject, teacher, weekly_period, room_required, double_period });
+  addCourse('國語文', c.homeroom_teacher, grade <= 2 ? 6 : 5);
+  addCourse('數學', c.homeroom_teacher, 4);
+  if (grade <= 2) {
+    addCourse('生活課程', c.homeroom_teacher, 6);
+  } else {
+    addCourse('社會', c.homeroom_teacher, 3);
+    addCourse('綜合活動', c.homeroom_teacher, 2);
+    addCourse('自然科學', pick(specialistPools.science, grade, number), 3, '自然教室', true);
+    addCourse('藝術', pick(specialistPools.arts, grade, number), 3, '藝術教室');
+    addCourse('英語文', pick(specialistPools.english, grade, number), grade <= 4 ? 1 : 2);
+  }
+  addCourse('健康教育', c.homeroom_teacher, 1);
+  addCourse('體育', pick(specialistPools.pe, grade, number), 2, '體育場');
+  addCourse('本土語文', pick(specialistPools.local, grade, number), 1);
+  addCourse(grade <= 2 ? '彈性學習－閱讀與探索' : '彈性學習－跨域專題', c.homeroom_teacher, grade <= 4 ? 3 : 4);
+});
 
 const rooms = classes.map(c => ({ room_id: `R${c.class_id}`, type: 'normal', capacity: 35 }));
 rooms.push(
-  { room_id: 'LAB01', type: '實驗教室', capacity: 35 },
-  { room_id: 'GYM01', type: '體育場', capacity: 60 },
-  { room_id: 'MUSIC01', type: '音樂教室', capacity: 35 },
-  { room_id: 'PC01', type: '電腦教室', capacity: 35 }
+  ...Array.from({length:4}, (_,index) => ({ room_id: `SCI${String(index + 1).padStart(2,'0')}`, type: '自然教室', capacity: 35 })),
+  ...Array.from({length:4}, (_,index) => ({ room_id: `ART${String(index + 1).padStart(2,'0')}`, type: '藝術教室', capacity: 35 })),
+  ...Array.from({length:4}, (_,index) => ({ room_id: `GYM${String(index + 1).padStart(2,'0')}`, type: '體育場', capacity: 60 }))
 );
 const availability = [
   { teacher: 'H001', weekday: 'Wed', period: 8, available: false, reason: '範例：行政會議' },
@@ -175,6 +140,18 @@ XLSX.utils.book_append_sheet(out, XLSX.utils.aoa_to_sheet([
   ['6. 本檔為排課功能示範，不代表任何特定學校的正式課程計畫。'],
   ['7. 建議先保留範例試跑成功，再逐步換成貴校資料並分批檢查。']
 ]), '使用說明');
+XLSX.utils.book_append_sheet(out, XLSX.utils.aoa_to_sheet([
+  ['範例資料說明｜60 班課綱擬真合成資料'],
+  ['資料性質', '依教育部課綱節數建立的合成排課示範；不是任何特定學校核定課程計畫。'],
+  ['課綱基線', '十二年國民基本教育課程綱要總綱，國小領域學習節數與彈性學習課程區間。'],
+  ['官方來源', 'https://edu.law.moe.gov.tw/LawContent.aspx?id=GL002057'],
+  ['節數選擇', '一、二年級每週 23 節；三、四年級 28 節；五、六年級 30 節，皆位於總綱允許區間。'],
+  ['部定領域', '國語文、數學、生活課程／社會、自然科學、藝術、綜合活動、健康與體育、本土語文及英語文。'],
+  ['校訂課程', '以「閱讀與探索／跨域專題」作為彈性學習合成範例，正式使用時須換成本校課程計畫。'],
+  ['師資假設', '每班配置級任教師；英語文、本土語文、自然科學、藝術與體育採跨班科任合成配置。'],
+  ['場地假設', '4 間自然教室、4 間藝術教室、4 個體育場地；普通教室以班級教室處理。'],
+  ['隱私', '所有公開姓名均為中性虛構名稱，不含原始或遮蔽後姓名。']
+]), '範例資料說明');
 add('班級', [
   ['班級代碼','class_id'], ['年級','grade'], ['班級名稱','class_name'], ['學生數','students'], ['導師代碼','homeroom_teacher'], ['備註','note']
 ].map(([label,key])=>({label,key})), classes,
@@ -187,7 +164,7 @@ add('課程', [
   {label:'班級代碼',key:'class'}, {label:'科目',key:'subject'}, {label:'教師代碼',key:'teacher'},
   {label:'每週節數',key:'weekly_period'}, {label:'教室類型',key:'room_required',format:roomTypeText},
   {label:'是否連堂',key:'double_period',format:yesNo}
-], courses, '可刪除範例：級任國語與數學各 3 節，另含科任課程；正式排課請依本校課程計畫修改。');
+], courses, '課綱擬真合成範例：每班 23／28／30 節；正式排課仍須依本校核定課程計畫修改。');
 add('教師可排時段', [
   {label:'教師代碼',key:'teacher'}, {label:'星期',key:'weekday',format:value=>weekdayText[value]||value},
   {label:'節次',key:'period'}, {label:'是否可排',key:'available',format:yesNo}, {label:'原因',key:'reason'}
@@ -211,11 +188,13 @@ fs.mkdirSync(path.dirname(reportPath), { recursive: true });
 fs.writeFileSync(reportPath, JSON.stringify({
   source: 'staffing-source-neutral.xlsx',
   assumptions: {
-    specialist_weekly_period: 1, homeroom_language_weekly_period: 3,
-    homeroom_math_weekly_period: 3, students_per_class: 30,
-    note: '以上皆為排課演示假設，不是實校課程計畫。'
+    weekly_totals_by_grade: { '1':23, '2':23, '3':28, '4':28, '5':30, '6':30 },
+    curriculum_basis: '十二年國民基本教育課程綱要總綱表4；彈性節數取允許區間內的保守值。',
+    source_url: 'https://edu.law.moe.gov.tw/LawContent.aspx?id=GL002057',
+    students_per_class: 30,
+    note: '師資、場地與彈性課程名稱為合成假設，不是實校核定課程計畫。'
   },
   counts: { classes: classes.length, teachers: teachers.length, course_rows: courses.length, staff_assignments: staffAssignments.length },
-  subject_teacher_mapping: mappingReport
+  specialist_pools: specialistPools
 }, null, 2), 'utf8');
 console.log(JSON.stringify({ output, classes: classes.length, teachers: teachers.length, courses: courses.length, staffAssignments: staffAssignments.length }));

@@ -48,7 +48,7 @@ function build30ClassInput() {
   return mapLegacyInput({ classes, teachers: [], courses, availability, rooms, fixed });
 }
 
-test('30 班 240 門課 30 秒內排完（5.7s 基準）', () => {
+test('30 班 690 節以大型建構搜尋在 5 秒內排完', () => {
   const input = build30ClassInput();
   assert.equal(input.classes.length, 30);
   assert.equal(input.courses.length, 240);
@@ -67,6 +67,7 @@ test('30 班 240 門課 30 秒內排完（5.7s 基準）', () => {
 
   assert.equal(res.success, true, '30 班排課應成功');
   assert.equal(res.pending.length, 0, '30 班應 0 pending');
-  assert.ok(ms < 30000, `排課耗時 ${ms}ms，超過 30 秒上限`);
+  assert.equal(res.searchStats.method, 'constructive-restarts');
+  assert.ok(ms < 5000, `排課耗時 ${ms}ms，超過 5 秒上限`);
   console.log(`30 班 / 240 課 → 成功 ${res.schedule.length} 堂，0 pending，${ms}ms`);
 });

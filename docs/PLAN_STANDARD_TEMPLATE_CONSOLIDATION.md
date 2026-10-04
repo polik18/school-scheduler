@@ -1,5 +1,7 @@
 # 標準範本整併實施計畫
 
+> 歷史文件：本計畫記錄 U0 的 924 節簡化基線。公開標準範本已於 U6 升級為 60 班、1,620 節課綱擬真合成資料；現況請以 [`STANDARD_TEMPLATE.md`](STANDARD_TEMPLATE.md) 與 [`CURRICULUM_REALISM.md`](CURRICULUM_REALISM.md) 為準。
+
 更新：2026-10-04
 
 ## 1. 產品決策
