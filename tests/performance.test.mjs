@@ -31,7 +31,7 @@ function build30ClassInput() {
 
   const courses = [];
   for (const { g, ids } of GRADES) for (const id of ids) {
-    const mk = (subj, w) => courses.push({ class: id, subject: subj, teacher: teacherOf[`${subj}-${id}`], weekly_period: w, room_required: 'normal', double_period: false });
+    const mk = (subj, w, room = 'normal') => courses.push({ class: id, subject: subj, teacher: teacherOf[`${subj}-${id}`], weekly_period: w, room_required: room, double_period: false });
     mk('國文', 5); mk('數學', 5); mk('英語', 4); mk('自然', 2, '實驗教室');
     mk('社會', 2); mk('體育', 2, '體育場'); mk('藝術', 2, '音樂教室'); mk('彈性', 1);
   }

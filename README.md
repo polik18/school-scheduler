@@ -7,6 +7,7 @@
 ## 主要能力
 
 - Excel 範本匯入與資料驗證（`src/importExcel.js`）
+- 教職員配置結果：級任導師、科任教師、行政與支援人員（可匯入、檢視、再匯出）
 - 限制一起算：班級、教師、教室、固定活動、教師每日節數上限（`src/model/solver.js`）
 - 未排入課程診斷與建議（`src/model/diagnosis.js`）
 - 班級／教師／教室三種課表檢視與人工調課（`src/manual.js`）
@@ -26,14 +27,19 @@
 
 | 工作表 | 英文欄位 |
 |--------|----------|
-| Classes | `class_id`, `grade`, `class_name`, `students` |
-| Teachers | `teacher_id`, `name`, `subject`, `max_daily_period`, `max_continuous_period` |
+| Classes | `class_id`, `grade`, `class_name`, `students`, `homeroom_teacher`, `note` |
+| Teachers | `teacher_id`, `name`, `subject`, `max_daily_period`, `max_continuous_period`, `identity_note` |
 | Courses | `class`, `subject`, `teacher`, `weekly_period`, `room_required`, `double_period` |
 | TeacherAvailability | `teacher`, `weekday`, `period`, `available`, `reason` |
 | Rooms | `room_id`, `type`, `capacity` |
 | FixedActivities | `activity`, `weekday`, `period`, `class`, `teacher` |
+| StaffAssignments | `department`, `job_title`, `teacher`, `name`, `note` |
 
 匯入時系統會偵測英文欄位行（跳過中文說明行），再進入排課計算。
+
+另外，系統可自動辨識已有的教職員配置簿，工作表名為「級任導師」、「科任教師」、「行政與支援人員」即可。系統保留其資料關係，不要求原檔的色彩、合併儲存格或排版。
+
+首頁另提供可直接匯入的「大型學校排課範例」與「教職員配置結果範例」；資料來源、演示假設與界線見 [`docs/LARGE_SCHOOL_EXAMPLE.md`](docs/LARGE_SCHOOL_EXAMPLE.md)。
 
 ## 限制說明
 
@@ -56,6 +62,16 @@ npm run build
 npm run preview
 ```
 
+品質檢查：
+
+```bash
+npm test              # 核心單元與 30 班效能測試
+npm run test:demo     # 54 班、846 節大型範例
+npm run test:e2e      # Chrome 匯入、排課、取消與匯出流程
+```
+
+`test:e2e` 預設使用系統 Chrome；如果不在標準安裝路徑，請設定 `PLAYWRIGHT_CHROME_PATH`。
+
 `main` 分支由 GitHub Actions 部署至 GitHub Pages（`vite.config.js` 已設 `base: './'`）。
 
 ## 專案結構
@@ -67,6 +83,7 @@ src/
     solver.js       排課核心（MRV 搜尋 + forward checking + scoring）
     schema.js       統一資料模型與欄位對應
     diagnosis.js    未排入課程的衝突診斷
+    staffing.js     教職員配置資料的轉換與驗證
   importExcel.js    Excel 匯入與欄位偵測
   exportExcel.js    Excel 匯出
   manual.js         人工調課與衝突檢查
@@ -80,5 +97,6 @@ docs/IMPORT_GUIDE.md  Excel 匯入簡易說明
 
 - **依賴**：React 18、xlsx 0.20.3（`package.json`）
 - **建構**：Vite 8（`@vitejs/plugin-react`）
+- **瀏覽器 E2E**：Playwright Core（使用系統 Chrome）
 - **版本**：3.1.0
 - **排課演算法**：最少剩餘值（MRV）優先、前瞻檢查（forward checking）、懲罰評分（偏好分散、固定課集中、專教不擠最後）

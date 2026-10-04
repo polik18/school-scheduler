@@ -162,3 +162,65 @@ test('solveSchedule 單班單課基本排入', () => {
   assert.equal(res.schedule.length, 1);
   assert.equal(res.schedule[0].day, 'Mon');
 });
+
+test('solveSchedule 尊重教師最大連續節數', () => {
+  const res = solveSchedule({
+    courses: [
+      { class: '101', subject: '甲', teacher: 'T01', weekly_period: 2 },
+      { class: '102', subject: '乙', teacher: 'T01', weekly_period: 2 }
+    ],
+    days: ['Mon', 'Tue'], periodsPerDay: 4, rooms: [], fixed: [], classes: [],
+    teachers: [{ teacher_id: 'T01', max_daily_period: 4, max_continuous_period: 1 }]
+  });
+  assert.equal(res.success, true);
+  for (const day of ['Mon', 'Tue']) {
+    const periods = res.schedule.filter(x => x.teacher === 'T01' && x.day === day).map(x => x.period);
+    for (const p of periods) assert.ok(!periods.includes(p + 1), `${day} 出現連續節次 ${p}, ${p + 1}`);
+  }
+});
+
+test('solveSchedule 連堂課必須排在同日相鄰節次', () => {
+  const res = solveSchedule({
+    courses: [{ class: '101', subject: '實驗', teacher: 'T01', weekly_period: 2, double_period: true }],
+    days: ['Mon', 'Tue'], periodsPerDay: 4, rooms: [], fixed: [],
+    teachers: [{ teacher_id: 'T01', max_daily_period: 4, max_continuous_period: 4 }]
+  });
+  assert.equal(res.success, true);
+  assert.equal(res.schedule.length, 2);
+  const sorted = [...res.schedule].sort((a, b) => a.period - b.period);
+  assert.equal(sorted[0].day, sorted[1].day);
+  assert.equal(sorted[1].period, sorted[0].period + 1);
+});
+
+test('solveSchedule 固定活動會同時佔用教師', () => {
+  const res = solveSchedule({
+    courses: [{ class: '102', subject: '國語', teacher: 'T01', weekly_period: 1 }],
+    days: ['Mon'], periodsPerDay: 2, rooms: [], classes: [],
+    fixed: [{ activity: '班會', weekday: 'Mon', period: 1, class: '101', teacher: 'T01' }],
+    teachers: [{ teacher_id: 'T01', max_daily_period: 2, max_continuous_period: 2 }]
+  });
+  assert.equal(res.success, true);
+  assert.equal(res.schedule[0].period, 2);
+});
+
+test('solveSchedule 鎖定一節不會丟失同課程其餘每週節數', () => {
+  const course = { class: '101', subject: '國語', teacher: 'T01', weekly_period: 3 };
+  const res = solveSchedule({
+    courses: [course], days: ['Mon', 'Tue'], periodsPerDay: 3, rooms: [], fixed: [], classes: [],
+    teachers: [{ teacher_id: 'T01', max_daily_period: 3, max_continuous_period: 3 }],
+    locked: [{ class: '101', subject: '國語', teacher: 'T01', unit: 1, day: 'Tue', period: 3 }]
+  });
+  assert.equal(res.success, true);
+  assert.equal(res.schedule.length, 3);
+  assert.ok(res.schedule.some(x => x.day === 'Tue' && x.period === 3 && x.locked));
+});
+
+test('mapLegacyInput 不會把字串 false 當成連堂', () => {
+  const mapped = mapLegacyInput({
+    teachers: [{ teacher_id: 'T01' }],
+    courses: [{ class: '101', subject: '國語', teacher: 'T01', double_period: 'false' }],
+    availability: [{ teacher: 'T01', weekday: 'Mon', period: 1, available: 'false' }]
+  });
+  assert.equal(mapped.courses[0].double_period, false);
+  assert.deepEqual(mapped.teachers[0].unavailable, [{ weekday: 'Mon', period: 1 }]);
+});

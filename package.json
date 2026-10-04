@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/*.mjs"
+    "test": "node --test tests/*.mjs",
+    "test:demo": "node scripts/verify-large-example.mjs",
+    "test:e2e": "npm run build && node scripts/e2e-browser.mjs",
+    "build:demo": "node scripts/build-large-school-example.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -16,6 +19,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",
+    "playwright-core": "^1.63.0",
     "vite": "^8.3.2"
   }
 }

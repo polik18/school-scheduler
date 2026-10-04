@@ -1,210 +1,214 @@
-// 統一排課核心：消耗 src/model/schema.js 的標準欄位
-// 課程單位欄位：class, subject, teacher, day, period, room_required, double_period, room_id, locked
-
+// 排課核心：MRV + forward checking。
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const slotKey = (id, day, period) => `${id}-${day}-${period}`;
 
 function teacherAvailability(teachers) {
   const map = {};
   teachers.forEach(t => {
     const unavail = new Set();
     (t.unavailable || []).forEach(u => {
-      if (u.weekday && u.period != null) unavail.add(`${u.weekday}-${u.period}`);
+      if (u.weekday && u.period != null) unavail.add(`${u.weekday}-${Number(u.period)}`);
     });
-    map[t.teacher_id] = { subject: t.subject, unavail, maxDaily: t.max_daily_period || 99 };
+    map[t.teacher_id] = {
+      unavail,
+      maxDaily: Number(t.max_daily_period) || 99,
+      maxContinuous: Number(t.max_continuous_period) || 99
+    };
   });
   return map;
 }
 
+// 連堂課以一個 duration=2 的任務搜尋，輸出時仍是兩筆逐節課程。
 function expandCourses(courses) {
-  const units = [];
-  courses.forEach((c, ci) => {
-    const count = Math.max(1, Number(c.weekly_period || c.periods || c.hours || 1));
-    for (let i = 0; i < count; i++) units.push({ ...c, unit: i + 1, status: 'pending' });
+  const tasks = [];
+  courses.forEach((course, courseIndex) => {
+    let remaining = Math.max(1, Number(course.weekly_period || course.periods || course.hours || 1));
+    let unit = 1;
+    while (remaining > 0) {
+      const duration = course.double_period && remaining >= 2 ? 2 : 1;
+      tasks.push({ ...course, duration, unit, taskId: `${courseIndex}:${unit}`, status: 'pending' });
+      unit += duration;
+      remaining -= duration;
+    }
   });
-  return units;
+  return tasks;
 }
 
-// 固定活動：占用某班級某時段
 function fixedOccupancy(fixed = []) {
-  const occ = {}; // classId -> Set("day-period")
+  const classes = {};
+  const teachers = new Set();
   fixed.forEach(f => {
+    const day = f.weekday || f.day;
+    const period = Number(f.period);
     const cls = f.class || f.classId;
-    if (!cls) return;
-    (occ[cls] ||= new Set()).add(`${f.weekday || f.day}-${f.period}`);
+    const teacher = f.teacher || f.teacherId;
+    if (cls) (classes[cls] ||= new Set()).add(`${day}-${period}`);
+    if (teacher) teachers.add(slotKey(teacher, day, period));
   });
-  return occ;
+  return { classes, teachers };
 }
 
 export function solveSchedule(input) {
-  const {
-    courses = [], days = DAYS, periodsPerDay = 8, rooms = [],
-    fixed = [], teachers = [], classes = [], locked = []
-  } = input;
-
-  const key = (a, b, c) => `${a}-${b}-${c}`;
-  const slots = days.flatMap(day =>
-    Array.from({ length: periodsPerDay }, (_, i) => ({ day, period: i + 1 })));
+  const { courses = [], days = DAYS, periodsPerDay = 8, rooms = [], fixed = [], teachers = [], locked = [] } = input;
+  const timeoutMs = input.timeoutMs ?? 30000;
+  const startTime = Date.now();
+  const slots = days.flatMap(day => Array.from({ length: periodsPerDay }, (_, i) => ({ day, period: i + 1 })));
   const tAvail = teacherAvailability(teachers);
-  const occ = fixedOccupancy(fixed);
-
-  // 教師每日已排節數（硬限制 max_daily_period）
+  const fixedOcc = fixedOccupancy(fixed);
   const teacherDayCount = {};
-  // 班級/教師/教室 占用集合
   const clsSlot = {}, teacherSlot = {}, roomSlot = {};
+  const tasks = sortHardCourses(expandCourses(courses));
+  const invalidLocks = [];
+  let timedOut = false;
+  let bestSchedule = [];
+  let bestScore = -Infinity;
 
-  const occupiedByClass = (classId, slot) =>
-    occ[classId]?.has(`${slot.day}-${slot.period}`) || !!clsSlot[key(classId, slot.day, slot.period)];
-
-  const candidates = (course) => slots.filter(slot => {
-    if (course.fixedDay && course.fixedDay !== slot.day) return false;
-    if (course.fixedPeriod && Number(course.fixedPeriod) !== slot.period) return false;
-    if (occupiedByClass(course.class, slot)) return false;
-    const t = tAvail[course.teacher];
-    if (t && t.unavail.has(`${slot.day}-${slot.period}`)) return false;
-    if (teacherSlot[key(course.teacher, slot.day, slot.period)]) return false;
-    const daily = (teacherDayCount[course.teacher] || {});
-    if (daily[slot.day] >= (t?.maxDaily || 99)) return false;
-    // 專教教室：需一間同類型空房
-    if (course.room_required && course.room_required !== 'normal' && course.room_required !== 'none') {
-      const r = rooms.find(x => (x.type || x.roomType) === course.room_required &&
-        !roomSlot[key(x.room_id || x.id, slot.day, slot.period)]);
-      if (!r) return false;
+  const span = (task, start) => Array.from({ length: task.duration || 1 }, (_, offset) => ({ day: start.day, period: start.period + offset }));
+  const classBusy = (classId, slot) => fixedOcc.classes[classId]?.has(`${slot.day}-${slot.period}`) || !!clsSlot[slotKey(classId, slot.day, slot.period)];
+  const exceedsContinuous = (teacher, day, newPeriods, maxContinuous) => {
+    if (!teacher || maxContinuous >= periodsPerDay) return false;
+    const periods = new Set(newPeriods);
+    for (let p = 1; p <= periodsPerDay; p++) if (teacherSlot[slotKey(teacher, day, p)]) periods.add(p);
+    let run = 0;
+    for (let p = 1; p <= periodsPerDay; p++) {
+      run = periods.has(p) ? run + 1 : 0;
+      if (run > maxContinuous) return true;
     }
-    return true;
-  });
-
-  const place = (course, slot, room) => {
-    const rid = (course.room_required && course.room_required !== 'normal' && course.room_required !== 'none')
-      ? (room ? (room.room_id || room.id) : '') : '';
-    course.day = slot.day; course.period = slot.period; course.room_id = rid;
-    course.status = 'done'; course.locked = true;
-    teacherDayCount[course.teacher] = teacherDayCount[course.teacher] || {};
-    teacherDayCount[course.teacher][slot.day] = (teacherDayCount[course.teacher][slot.day] || 0) + 1;
-    clsSlot[key(course.class, slot.day, slot.period)] = course;
-    teacherSlot[key(course.teacher, slot.day, slot.period)] = course;
-    if (rid) roomSlot[key(rid, slot.day, slot.period)] = course;
+    return false;
   };
-
-  const remove = (course, slot) => {
-    if (teacherDayCount[course.teacher]) {
-      teacherDayCount[course.teacher][slot.day] = (teacherDayCount[course.teacher][slot.day] || 0) - 1;
-    }
-    delete clsSlot[key(course.class, slot.day, slot.period)];
-    delete teacherSlot[key(course.teacher, slot.day, slot.period)];
-    if (course.room_id) delete roomSlot[key(course.room_id, slot.day, slot.period)];
-    course.status = 'pending';
-    delete course.day;
-    delete course.period;
-    delete course.room_id;
-    delete course.locked;
+  const availableRooms = (task, occupiedSlots) => {
+    if (!task.room_required || task.room_required === 'normal' || task.room_required === 'none') return [null];
+    return rooms.filter(room => {
+      if ((room.type || room.roomType) !== task.room_required) return false;
+      const id = room.room_id || room.id;
+      return occupiedSlots.every(slot => !roomSlot[slotKey(id, slot.day, slot.period)]);
+    });
   };
-
+  const isCandidate = (task, start) => {
+    if (task.fixedDay && task.fixedDay !== start.day) return false;
+    if (task.fixedPeriod && Number(task.fixedPeriod) !== start.period) return false;
+    const occupiedSlots = span(task, start);
+    if (occupiedSlots.at(-1).period > periodsPerDay) return false;
+    const teacher = tAvail[task.teacher];
+    if (occupiedSlots.some(slot => classBusy(task.class, slot))) return false;
+    if (occupiedSlots.some(slot => teacher?.unavail.has(`${slot.day}-${slot.period}`))) return false;
+    if (occupiedSlots.some(slot => fixedOcc.teachers.has(slotKey(task.teacher, slot.day, slot.period)))) return false;
+    if (occupiedSlots.some(slot => teacherSlot[slotKey(task.teacher, slot.day, slot.period)])) return false;
+    const daily = teacherDayCount[task.teacher]?.[start.day] || 0;
+    if (daily + occupiedSlots.length > (teacher?.maxDaily || 99)) return false;
+    if (exceedsContinuous(task.teacher, start.day, occupiedSlots.map(x => x.period), teacher?.maxContinuous || 99)) return false;
+    return availableRooms(task, occupiedSlots).length > 0;
+  };
+  const candidates = task => slots.filter(slot => isCandidate(task, slot));
+  const place = (task, start, isLocked = false) => {
+    const occupiedSlots = span(task, start);
+    const room = availableRooms(task, occupiedSlots)[0];
+    const roomId = room ? (room.room_id || room.id) : '';
+    const lessons = occupiedSlots.map((slot, offset) => ({
+      ...task, day: slot.day, period: slot.period, unit: task.unit + offset,
+      room_id: roomId, status: 'done', locked: isLocked
+    }));
+    task.status = 'done';
+    task.placements = lessons;
+    teacherDayCount[task.teacher] ||= {};
+    teacherDayCount[task.teacher][start.day] = (teacherDayCount[task.teacher][start.day] || 0) + lessons.length;
+    lessons.forEach(lesson => {
+      clsSlot[slotKey(task.class, lesson.day, lesson.period)] = lesson;
+      teacherSlot[slotKey(task.teacher, lesson.day, lesson.period)] = lesson;
+      if (roomId) roomSlot[slotKey(roomId, lesson.day, lesson.period)] = lesson;
+    });
+  };
+  const remove = task => {
+    (task.placements || []).forEach(lesson => {
+      teacherDayCount[task.teacher][lesson.day]--;
+      delete clsSlot[slotKey(task.class, lesson.day, lesson.period)];
+      delete teacherSlot[slotKey(task.teacher, lesson.day, lesson.period)];
+      if (lesson.room_id) delete roomSlot[slotKey(lesson.room_id, lesson.day, lesson.period)];
+    });
+    task.status = 'pending';
+    delete task.placements;
+  };
   const collect = () => Object.values(clsSlot);
-
-  const forwardCheck = (left) => left.every(c => candidates(c).length > 0);
-
-  const courseRoom = (course, slot) => {
-    if (!course.room_required || course.room_required === 'normal' || course.room_required === 'none') return null;
-    return rooms.find(r => (r.type || r.roomType) === course.room_required &&
-      !roomSlot[key(r.room_id || r.id, slot.day, slot.period)]);
+  const rememberBest = () => {
+    const current = collect();
+    const score = scoreSchedule(current);
+    if (current.length > bestSchedule.length || (current.length === bestSchedule.length && score > bestScore)) {
+      bestSchedule = current.map(x => ({ ...x }));
+      bestScore = score;
+    }
   };
 
-  const search = (left) => {
-    if (Date.now() - startTime > timeoutMs) return false;
-    if (left.length === 0) {
-      const score = scoreSchedule(collect());
-      if (score > bestScore) { bestScore = score; bestSchedule = collect(); }
-      return true;
+  // 鎖定資料對應特定課程單位，不會因鎖一節就略過整門課。
+  locked.forEach(lock => {
+    const task = tasks.find(t => t.status !== 'done' && t.class === lock.class && t.subject === lock.subject &&
+      t.teacher === lock.teacher && (lock.unit == null || t.unit === Number(lock.unit)));
+    const start = { day: lock.day, period: Number(lock.period) };
+    if (task && isCandidate(task, start)) place(task, start, true);
+    else invalidLocks.push(lock);
+  });
+  rememberBest();
+
+  const search = remaining => {
+    if (Date.now() - startTime > timeoutMs) { timedOut = true; return false; }
+    if (!remaining.length) { rememberBest(); return true; }
+    let selected = null, selectedCandidates = null;
+    for (const task of remaining) {
+      const list = candidates(task);
+      if (!selectedCandidates || list.length < selectedCandidates.length) { selected = task; selectedCandidates = list; }
+      if (!list.length) return false;
     }
-    let best = null, bestList = null;
-    for (const c of left) {
-      const list = candidates(c);
-      if (!bestList || list.length < bestList.length) { best = c; bestList = list; }
-      if (list.length === 0) return false;
-    }
-    bestList.sort((a, b) => a.period - b.period);
-    for (const slot of bestList) {
-      const room = courseRoom(best, slot);
-      place(best, slot, room);
-      const remain = left.filter(x => x !== best);
-      const ok = forwardCheck(remain) && search(remain);
-      if (ok) return true;
-      remove(best, slot);
+    selectedCandidates.sort((a, b) => a.period - b.period || days.indexOf(a.day) - days.indexOf(b.day));
+    for (const slot of selectedCandidates) {
+      place(selected, slot, false);
+      rememberBest();
+      const rest = remaining.filter(x => x !== selected);
+      // 下一層 MRV 本身就會對所有剩餘任務做候選檢查；
+      // 這裡不重複做一次 forward-check，避免大型資料每層雙倍掃描。
+      if (search(rest)) return true;
+      remove(selected);
+      if (timedOut) return false;
     }
     return false;
   };
 
-  // 先排學生鎖定的課程
-  (locked || []).forEach(lk => {
-    const course = courses.find(c => c.class === lk.class && c.subject === lk.subject && c.teacher === lk.teacher);
-    if (!course) return;
-    const slot = { day: lk.day, period: Number(lk.period) };
-    if (candidates(course).some(s => s.day === slot.day && s.period === slot.period)) {
-      const room = courseRoom(course, slot);
-      place(course, slot, room);
-    }
-  });
-
-  const units = sortHardCourses(expandCourses(courses).filter(c => c.status !== 'done'));
-  const startTime = Date.now();
-  const timeoutMs = input.timeoutMs || 30000;
-  let bestSchedule = null, bestScore = -Infinity;
-
-  const ok = search(units);
-  const finalSchedule = collect();
-  const success = ok && finalSchedule.length === units.length + (locked || []).length ? true : ok;
-  const pending = units.filter(c => c.status !== 'done').map(c => ({
-    class: c.class, subject: c.subject, teacher: c.teacher, unit: c.unit
-  }));
+  search(tasks.filter(t => t.status !== 'done'));
+  const scheduledTaskIds = new Set(bestSchedule.map(x => x.taskId));
+  const pending = tasks.filter(t => !scheduledTaskIds.has(t.taskId)).flatMap(task =>
+    Array.from({ length: task.duration || 1 }, (_, offset) => ({ class: task.class, subject: task.subject, teacher: task.teacher, unit: task.unit + offset })));
+  const publicSchedule = bestSchedule.map(({ taskId, duration, placements, ...lesson }) => lesson);
+  const diagnostics = [];
+  if (invalidLocks.length) diagnostics.push({ type: 'lock', message: `${invalidLocks.length} 筆鎖定課程無法放入指定時段。` });
+  if (timedOut) diagnostics.push({ type: 'timeout', message: `排課已達 ${timeoutMs}ms 時間上限，保留目前最完整的可行結果。` });
+  if (pending.length) diagnostics.push({ type: 'constraint', message: `尚有 ${pending.length} 堂課程未能排入，請檢視衝突診斷並調整限制。` });
   return {
-    success,
-    schedule: finalSchedule,
-    score: scoreSchedule(finalSchedule),
-    pending,
-    diagnostics: pending.length ? [
-      { type: 'constraint',
-        message: `尚有 ${pending.length} 堂課程未能排入，請檢視衝突診斷並調整限制。` }
-    ] : []
+    success: pending.length === 0 && invalidLocks.length === 0,
+    schedule: publicSchedule,
+    score: scoreSchedule(publicSchedule), pending, diagnostics, timedOut,
+    elapsedMs: Date.now() - startTime
   };
 }
 
-// 評分：偏好分散、固定課集中、專教不擠最後
+// 結果品質指標，不宣稱為全域最佳解。
 function scoreSchedule(schedule) {
   let score = 0;
-  const classSlot = {};
-  schedule.forEach(c => {
-    const k = `${c.class}-${c.day}-${c.period}`;
-    classSlot[k] = (classSlot[k] || 0) + 1;
-  });
-  Object.values(classSlot).forEach(n => { if (n > 1) score -= 500 * (n - 1); });
-  // 分散：同科目同一天多節扣分
   const byClassSubject = {};
-  schedule.forEach(c => {
-    const k = `${c.class}-${c.subject}`;
-    (byClassSubject[k] ||= []).push(c.day);
-  });
-  Object.entries(byClassSubject).forEach(([, days]) => {
-    const dayCount = {};
-    days.forEach(d => dayCount[d] = (dayCount[d] || 0) + 1);
-    Object.values(dayCount).forEach(n => { if (n > 1) score -= 30 * (n - 1); });
+  schedule.forEach(course => (byClassSubject[`${course.class}-${course.subject}`] ||= []).push(course.day));
+  Object.values(byClassSubject).forEach(days => {
+    const counts = {};
+    days.forEach(day => { counts[day] = (counts[day] || 0) + 1; });
+    Object.values(counts).forEach(count => { if (count > 1) score -= 30 * (count - 1); });
   });
   return score;
 }
 
-// 排課順序：固定 > 專教 > 最密集 > 一般
-function sortHardCourses(units) {
-  const byClassSubject = {};
-  units.forEach(c => {
-    const k = `${c.class}-${c.subject}`;
-    (byClassSubject[k] ||= []).push(c);
-  });
-  const difficulty = c => {
-    let d = 0;
-    if (c.fixedDay) d += 100;
-    if (c.room_required && c.room_required !== 'normal' && c.room_required !== 'none') d += 50;
-    const cnt = byClassSubject[`${c.class}-${c.subject}`]?.length || 1;
-    d += cnt;
-    return d;
+function sortHardCourses(tasks) {
+  const density = {};
+  tasks.forEach(task => { const key = `${task.class}-${task.subject}`; density[key] = (density[key] || 0) + (task.duration || 1); });
+  const difficulty = task => {
+    let value = task.duration > 1 ? 200 : 0;
+    if (task.fixedDay) value += 100;
+    if (task.room_required && task.room_required !== 'normal' && task.room_required !== 'none') value += 50;
+    return value + density[`${task.class}-${task.subject}`];
   };
-  return [...units].sort((a, b) => difficulty(b) - difficulty(a));
+  return [...tasks].sort((a, b) => difficulty(b) - difficulty(a));
 }

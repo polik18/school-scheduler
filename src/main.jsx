@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { readSchoolExcel, validateInput } from './importExcel.js';
 import { createTemplate } from './template.js';
 import { solveSchedule } from './model/solver.js';
 import { diagnosePendingCourse } from './model/diagnosis.js';
 import { moveLesson } from './manual.js';
-import { downloadExcel } from './exportExcel.js';
+import { downloadExcel, downloadStaffingExcel } from './exportExcel.js';
+import { buildStaffingPlan } from './model/staffing.js';
 import { saveVersion, loadVersions, deleteVersion } from './storage.js';
 import './style.css';
 
@@ -23,6 +24,8 @@ export default function App() {
   const [lockMode, setLockMode] = useState(false);
   const [activeView, setActiveView] = useState('class');
   const [selectedLesson, setSelectedLesson] = useState(null);
+  const [solving, setSolving] = useState(false);
+  const workerRef = useRef(null);
 
   // 匯入檔案
   const handleImport = useCallback(async (file) => {
@@ -30,6 +33,11 @@ export default function App() {
     try {
       const parsed = await readSchoolExcel(file);
       setData(parsed);
+      if (parsed.kind === 'staffing') {
+        const p = parsed.staffingPlan;
+        setStatus(`已載入教職員配置：${p.homeroom.length} 筆級任 / ${p.subjectTeachers.length} 筆科任 / ${p.administration.length} 筆行政支援`);
+        return;
+      }
       const v = validateInput(parsed);
       setValidation(v);
       setStatus(parsed.courses.length ? `匯入完成：${parsed.teachers.length} 師 / ${parsed.classes.length} 班 / ${parsed.courses.length} 課` : '匯入完成，但課程資料為空');
@@ -42,24 +50,40 @@ export default function App() {
   const handleSolve = useCallback(() => {
     if (!data) { setError('請先匯入資料'); return; }
     setError(''); setSchedule(null); setStatus('正在排課…');
-    try {
-      const result = solveSchedule({
-        courses: data.courses,
-        days: settings.days,
-        periodsPerDay: settings.periodsPerDay,
-        rooms: data.rooms,
-        fixed: data.fixedActivities,
-        teachers: data.teachers,
-        classes: data.classes,
-      });
+    setSolving(true);
+    const payload = { courses: data.courses, days: settings.days, periodsPerDay: settings.periodsPerDay,
+      rooms: data.rooms, fixed: data.fixedActivities, teachers: data.teachers, classes: data.classes };
+    const accept = result => {
       setSchedule(result);
       setSelectedLesson(null);
-      if (!result.success) setStatus('排課完成，但有課程未能排入，請檢視衝突診斷。');
-      else setStatus('排課成功！');
+      setSolving(false);
+      const seconds = ((result.elapsedMs || 0) / 1000).toFixed(1);
+      if (!result.success) setStatus(`排課完成（${seconds} 秒），但有課程未能排入，請檢視衝突診斷。`);
+      else setStatus(`排課成功！耗時 ${seconds} 秒。`);
+    };
+    try {
+      if (typeof Worker === 'undefined') { accept(solveSchedule(payload)); return; }
+      const worker = new Worker(new URL('./solverWorker.js', import.meta.url), { type: 'module' });
+      workerRef.current = worker;
+      worker.onmessage = event => {
+        worker.terminate(); workerRef.current = null;
+        if (event.data.ok) accept(event.data.result);
+        else { setSolving(false); setError(`排課失敗：${event.data.error}`); }
+      };
+      worker.onerror = event => {
+        worker.terminate(); workerRef.current = null; setSolving(false);
+        setError(`排課失敗：${event.message || '背景運算錯誤'}`);
+      };
+      worker.postMessage(payload);
     } catch (e) {
-      setError(`排課失敗：${e.message}`);
+      setSolving(false); setError(`排課失敗：${e.message}`);
     }
   }, [data, settings]);
+
+  const handleCancelSolve = useCallback(() => {
+    workerRef.current?.terminate(); workerRef.current = null;
+    setSolving(false); setStatus('已取消排課。');
+  }, []);
 
   // 調課
   const handleTimetableCell = useCallback((index, target) => {
@@ -131,7 +155,7 @@ export default function App() {
     const classIds = [...new Set(schedule.schedule.map(c => c.class))];
     let html = `<h1>學校排課表</h1>`;
     classIds.forEach(cls => {
-      html += `<h2>班級：${cls}</h2>`;
+      html += `<h2>班級：${escapeHtml(cls)}</h2>`;
       html += buildGridHtml(schedule.schedule, cls, settings.days, settings.periodsPerDay);
     });
     w.document.write(`<html><head><title>課表</title></head><body>${html}</body></html>`);
@@ -150,6 +174,11 @@ export default function App() {
         <SiteFooter />
       </div>
     );
+  }
+
+  if (data.kind === 'staffing') {
+    return <StaffingWorkspace data={data} status={status} error={error} onImport={handleImport}
+      onReset={() => { setData(null); setStatus(''); setError(''); }} />;
   }
 
   return (
@@ -190,24 +219,27 @@ export default function App() {
             <label>每週上課天數<select value={settings.days.length} onChange={(e) => setSettings(s => ({ ...s, days: DAYS.slice(0, Number(e.target.value)) }))}><option value="5">5 天（週一至週五）</option><option value="6">6 天（週一至週六）</option></select></label>
             <label>每日節數<select value={settings.periodsPerDay} onChange={(e) => setSettings(s => ({ ...s, periodsPerDay: Number(e.target.value) }))}><option value="6">6 節</option><option value="7">7 節</option><option value="8">8 節</option></select></label>
           </div>
-          <button className="btn primary" onClick={handleSolve} disabled={validation?.errors.length > 0}>執行智慧排課 →</button>
+          <button className="btn primary" onClick={handleSolve} disabled={validation?.errors.length > 0 || solving}>{solving ? '背景排課中…' : '執行智慧排課 →'}</button>
+          {solving && <button className="btn secondary" onClick={handleCancelSolve}>取消排課</button>}
         </section>
 
         {schedule && <>
           <section className="panel">
             <div className="panel-heading"><span>04</span><div><h2>排課結果</h2><p>{schedule.success ? '排課核心已完成計算，可進一步檢查與匯出。' : '仍有課程未能排入，請查看衝突診斷。'}</p></div></div>
-            <div className="result-stats"><div><strong>{schedule.schedule.length}</strong><span>已排入</span></div><div><strong>{schedule.pending?.length || 0}</strong><span>待處理</span></div><div><strong>{schedule.score ?? 0}</strong><span>排課評分</span></div></div>
+            <div className="result-stats"><div><strong>{schedule.schedule.length}</strong><span>已排入</span></div><div><strong>{schedule.pending?.length || 0}</strong><span>待處理</span></div><div><strong>{schedule.score ?? 0}</strong><span>品質指標</span></div><div><strong>{((schedule.elapsedMs || 0) / 1000).toFixed(1)}s</strong><span>運算耗時</span></div></div>
+            {schedule.diagnostics?.map((item, i) => <div key={i} className="banner warn">{item.message}</div>)}
             <div className="row">
               <button className="btn" onClick={() => setStatus(schedule.success ? '排課成功，無硬性衝突。' : '尚有課程未排入，請檢視衝突診斷。')}>重新檢查結果</button>
               <button className="btn secondary" onClick={handleSave}>儲存本機版本</button>
               <button className="btn" onClick={() => downloadExcel(schedule.schedule, { total: schedule.schedule.length, pending: schedule.pending?.length || 0, success: schedule.success, score: schedule.score })}>匯出 Excel</button>
+              <button className="btn" onClick={() => downloadStaffingExcel(buildStaffingPlan(data))}>匯出教職員配置</button>
               <button className="btn" onClick={handleExportPdf}>匯出 PDF</button>
             </div>
           </section>
 
           {schedule.pending?.length > 0 && <section className="panel">
             <div className="panel-heading"><span>05</span><div><h2>衝突診斷</h2><p>逐筆查看未排入課程可能碰到的限制。</p></div></div>
-            {schedule.pending.map((c, i) => <div key={i} className="diagnostic"><div className="diag-title">未排入：{c.class} {c.subject}（{c.teacher}）</div>{diagnosePendingCourse(c, { courses: data.courses, teachers: data.teachers, rooms: data.rooms, fixed: data.fixedActivities, classes: data.classes, days: settings.days }).map((r, j) => <div key={j} className={`diag-${r.level}`}>{r.message}</div>)}</div>)}
+            {schedule.pending.map((c, i) => <div key={i} className="diagnostic"><div className="diag-title">未排入：{c.class} {c.subject}（{c.teacher}）</div>{diagnosePendingCourse(c, { courses: data.courses, teachers: data.teachers, rooms: data.rooms, fixed: data.fixedActivities, classes: data.classes, days: settings.days, periodsPerDay: settings.periodsPerDay }).map((r, j) => <div key={j} className={`diag-${r.level}`}>{r.message}</div>)}</div>)}
           </section>}
 
           <section className="panel timetable-panel">
@@ -231,20 +263,54 @@ export default function App() {
   );
 }
 
+function StaffingWorkspace({ data, status, error, onImport, onReset }) {
+  const plan = data.staffingPlan;
+  const validation = data.staffingValidation || { errors: [], warnings: [] };
+  return (
+    <div className="site-shell">
+      <BrandHeader />
+      <main id="main" className="app">
+        <section className="workspace-heading"><div><p className="eyebrow">Staffing workspace</p><h1>教職員配置結果</h1><p>保留級任、科任與行政支援的資料關係，不依賴原 Excel 排版。</p></div><button className="btn secondary" onClick={onReset}>← 回首頁</button></section>
+        {status && <div className="banner info" role="status">{status}</div>}
+        {error && <div className="banner error" role="alert">{error}</div>}
+        {validation.errors.map((x, i) => <div key={i} className="banner error">{x}</div>)}
+        {validation.warnings.map((x, i) => <div key={i} className="banner warn">{x}</div>)}
+        <section className="panel"><div className="panel-heading"><span>01</span><div><h2>資料總覽</h2><p>可直接載入「級任導師／科任教師／行政與支援人員」工作表。</p></div></div>
+          <div className="data-summary"><div><strong>{plan.homeroom.length}</strong><span>級任配置</span></div><div><strong>{plan.subjectTeachers.length}</strong><span>科任教師</span></div><div><strong>{plan.administration.length}</strong><span>行政支援</span></div></div>
+          <div className="row"><label className="btn file-input">更換 Excel<input type="file" accept=".xlsx,.xls" onChange={e => e.target.files[0] && onImport(e.target.files[0])} /></label><button className="btn primary" onClick={() => downloadStaffingExcel(plan)}>匯出教職員配置</button></div>
+        </section>
+        <StaffingTable title="級任導師" headers={['年級','班級','導師','備註']} rows={plan.homeroom.map(x => [x.grade,x.class_name || x.class_id,x.teacher_name || x.teacher_id,x.note])} />
+        <StaffingTable title="科任教師" headers={['教師','領域／科目','任教年級與班級','備註']} rows={plan.subjectTeachers.map(x => [x.teacher_name || x.teacher_id,(x.subjects || []).join('、'),x.assignment_text || '',x.note])} />
+        <StaffingTable title="行政與支援人員" headers={['處室／單位','職稱','姓名','備註']} rows={plan.administration.map(x => [x.department,x.job_title,x.name || x.teacher_id,x.note])} />
+      </main><SiteFooter />
+    </div>
+  );
+}
+
+function StaffingTable({ title, headers, rows }) {
+  return <section className="panel"><div className="panel-heading"><div><h2>{title}</h2><p>{rows.length} 筆</p></div></div><div className="table-scroll"><table className="timetable"><thead><tr>{headers.map(x => <th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>)}</tbody></table></div></section>;
+}
+
 function buildGridHtml(schedule, classId, days, periodsPerDay) {
   let html = '<table border="1" cellpadding="6"><tr><th>節次</th>';
-  days.forEach(d => html += `<th>${DAY_LABELS[d]}</th>`);
+  days.forEach(d => html += `<th>${escapeHtml(DAY_LABELS[d] || d)}</th>`);
   html += '</tr>';
   for (let p = 1; p <= periodsPerDay; p++) {
     html += `<tr><th>${p}</th>`;
     days.forEach(d => {
       const cell = schedule.find(c => c.class === classId && c.day === d && c.period === p);
-      html += `<td>${cell ? `${cell.subject}<br/><small>${cell.teacher}</small>` : ''}</td>`;
+      html += `<td>${cell ? `${escapeHtml(cell.subject)}<br/><small>${escapeHtml(cell.teacher)}</small>` : ''}</td>`;
     });
     html += '</tr>';
   }
   html += '</table>';
   return html;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
 }
 
 function ViewTab({ view, schedule, settings, lockMode, selectedLesson, onCellClick }) {
@@ -345,6 +411,8 @@ function WelcomeScreen({ onImport, onDownload, error }) {
           <div className="welcome-actions">
             <label className="btn primary file-input">匯入 Excel 開始排課<input type="file" accept=".xlsx,.xls" onChange={(e) => e.target.files[0] && onImport(e.target.files[0])} /></label>
             <button className="btn inverse" onClick={onDownload}>先下載標準範本</button>
+            <a className="btn inverse" href="./examples/large-school-schedule-demo.xlsx" download>下載大型學校排課範例</a>
+            <a className="btn inverse" href="./examples/staffing-result-demo.xlsx" download>下載教職員配置結果範例</a>
           </div>
         </div>
       </section>

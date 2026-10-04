@@ -8,3 +8,4 @@ dist/
 out.xlsx
 school-result.xlsx
 coverage/
+test-results/

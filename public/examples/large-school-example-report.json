@@ -1,0 +1,1736 @@
+{
+  "source": "staffing-result-demo.xlsx",
+  "assumptions": {
+    "specialist_weekly_period": 1,
+    "homeroom_language_weekly_period": 3,
+    "homeroom_math_weekly_period": 3,
+    "students_per_class": 30,
+    "note": "以上皆為排課演示假設，不是實校課程計畫。"
+  },
+  "counts": {
+    "classes": 54,
+    "teachers": 124,
+    "course_rows": 630,
+    "staff_assignments": 40
+  },
+  "subject_teacher_mapping": [
+    {
+      "source_row": 2,
+      "teacher_id": "S001",
+      "teacher_name": "何○瑜",
+      "source_subject": "英語",
+      "source_assignment": "一年級 1~5班、三年級 1~3班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "一年級 1~5班、三年級 1~3班",
+          "classes": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "301",
+            "302",
+            "303"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 3,
+      "teacher_id": "S002",
+      "teacher_name": "張○慈",
+      "source_subject": "英語",
+      "source_assignment": "一年級 6~7班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "一年級 6~7班",
+          "classes": [
+            "106",
+            "107"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 4,
+      "teacher_id": "S003",
+      "teacher_name": "鄧○(代)",
+      "source_subject": "英語",
+      "source_assignment": "一年級 8班、六年級 3~7班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "一年級 8班、六年級 3~7班",
+          "classes": [
+            "108",
+            "603",
+            "604",
+            "605",
+            "606",
+            "607"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 5,
+      "teacher_id": "S004",
+      "teacher_name": "丁○萍",
+      "source_subject": "英語",
+      "source_assignment": "二年級 1、3班，四年級 1~4班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "二年級 1、3班，四年級 1~4班",
+          "classes": [
+            "201",
+            "203",
+            "401",
+            "402",
+            "403",
+            "404"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 6,
+      "teacher_id": "S005",
+      "teacher_name": "未載明",
+      "source_subject": "英語",
+      "source_assignment": "二年級 2班，四年級 5~9班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "二年級 2班，四年級 5~9班",
+          "classes": [
+            "202",
+            "405",
+            "406",
+            "407",
+            "408",
+            "409"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 7,
+      "teacher_id": "S006",
+      "teacher_name": "楊○君",
+      "source_subject": "英語",
+      "source_assignment": "二年級 4~6班、三年級 4~6班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "二年級 4~6班、三年級 4~6班",
+          "classes": [
+            "204",
+            "205",
+            "206",
+            "304",
+            "305",
+            "306"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 8,
+      "teacher_id": "S007",
+      "teacher_name": "高○禕(代)",
+      "source_subject": "英語、生活雙語",
+      "source_assignment": "英語：二年級 7~9班、三年級 7~9班；生活雙語：一年級 5~8班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "二年級 7~9班、三年級 7~9班",
+          "classes": [
+            "207",
+            "208",
+            "209",
+            "307",
+            "308",
+            "309"
+          ]
+        },
+        {
+          "subject": "生活雙語",
+          "text": "一年級 5~8班",
+          "classes": [
+            "105",
+            "106",
+            "107",
+            "108"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 9,
+      "teacher_id": "S008",
+      "teacher_name": "張○齊",
+      "source_subject": "英語",
+      "source_assignment": "五年級 1~4班、六年級 1~2班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "五年級 1~4班、六年級 1~2班",
+          "classes": [
+            "501",
+            "502",
+            "503",
+            "504",
+            "601",
+            "602"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 10,
+      "teacher_id": "S009",
+      "teacher_name": "張○萱",
+      "source_subject": "英語、生活雙語",
+      "source_assignment": "英語：五年級 5~9班；生活雙語：一年級 1班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "五年級 5~9班",
+          "classes": [
+            "505",
+            "506",
+            "507",
+            "508",
+            "509"
+          ]
+        },
+        {
+          "subject": "生活雙語",
+          "text": "一年級 1班",
+          "classes": [
+            "101"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 11,
+      "teacher_id": "S010",
+      "teacher_name": "傅○瑄",
+      "source_subject": "英語",
+      "source_assignment": "六年級 8~9班",
+      "sections": [
+        {
+          "subject": "英語",
+          "text": "六年級 8~9班",
+          "classes": [
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 12,
+      "teacher_id": "S011",
+      "teacher_name": "簡○樂",
+      "source_subject": "生活音樂、音樂",
+      "source_assignment": "生活音樂：一年級 1~3班；音樂：四年級 1~9班",
+      "sections": [
+        {
+          "subject": "生活音樂",
+          "text": "一年級 1~3班",
+          "classes": [
+            "101",
+            "102",
+            "103"
+          ]
+        },
+        {
+          "subject": "音樂",
+          "text": "四年級 1~9班",
+          "classes": [
+            "401",
+            "402",
+            "403",
+            "404",
+            "405",
+            "406",
+            "407",
+            "408",
+            "409"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 13,
+      "teacher_id": "S012",
+      "teacher_name": "黃○慧",
+      "source_subject": "生活音樂、音樂",
+      "source_assignment": "生活音樂：一年級 4~8班；音樂：三年級 1~9班",
+      "sections": [
+        {
+          "subject": "生活音樂",
+          "text": "一年級 4~8班",
+          "classes": [
+            "104",
+            "105",
+            "106",
+            "107",
+            "108"
+          ]
+        },
+        {
+          "subject": "音樂",
+          "text": "三年級 1~9班",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305",
+            "306",
+            "307",
+            "308",
+            "309"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 14,
+      "teacher_id": "S013",
+      "teacher_name": "莊○文",
+      "source_subject": "生活音樂、音樂",
+      "source_assignment": "生活音樂：二年級 1~5班；音樂：六年級 1~6班",
+      "sections": [
+        {
+          "subject": "生活音樂",
+          "text": "二年級 1~5班",
+          "classes": [
+            "201",
+            "202",
+            "203",
+            "204",
+            "205"
+          ]
+        },
+        {
+          "subject": "音樂",
+          "text": "六年級 1~6班",
+          "classes": [
+            "601",
+            "602",
+            "603",
+            "604",
+            "605",
+            "606"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 15,
+      "teacher_id": "S014",
+      "teacher_name": "李○意",
+      "source_subject": "生活音樂",
+      "source_assignment": "二年級 6~9班",
+      "sections": [
+        {
+          "subject": "生活音樂",
+          "text": "二年級 6~9班",
+          "classes": [
+            "206",
+            "207",
+            "208",
+            "209"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 16,
+      "teacher_id": "S015",
+      "teacher_name": "周○秀(代)",
+      "source_subject": "音樂、美術、健康",
+      "source_assignment": "音樂：五年級 1~5班；美術：四年級 1、2、7、8班；健康：五年級 1班",
+      "sections": [
+        {
+          "subject": "音樂",
+          "text": "五年級 1~5班",
+          "classes": [
+            "501",
+            "502",
+            "503",
+            "504",
+            "505"
+          ]
+        },
+        {
+          "subject": "美術",
+          "text": "四年級 1、2、7、8班",
+          "classes": [
+            "401",
+            "402",
+            "407",
+            "408"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "五年級 1班",
+          "classes": [
+            "501"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 17,
+      "teacher_id": "S016",
+      "teacher_name": "林○穎",
+      "source_subject": "音樂",
+      "source_assignment": "五年級 6~9班、六年級 7~9班",
+      "sections": [
+        {
+          "subject": "音樂",
+          "text": "五年級 6~9班、六年級 7~9班",
+          "classes": [
+            "506",
+            "507",
+            "508",
+            "509",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 18,
+      "teacher_id": "S017",
+      "teacher_name": "吳○羽(代)",
+      "source_subject": "美術",
+      "source_assignment": "三年級 1~9班、四年級 9班、六年級 1~2班",
+      "sections": [
+        {
+          "subject": "美術",
+          "text": "三年級 1~9班、四年級 9班、六年級 1~2班",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305",
+            "306",
+            "307",
+            "308",
+            "309",
+            "409",
+            "601",
+            "602"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 19,
+      "teacher_id": "S018",
+      "teacher_name": "盧○涵",
+      "source_subject": "美術",
+      "source_assignment": "四年級 3~6班",
+      "sections": [
+        {
+          "subject": "美術",
+          "text": "四年級 3~6班",
+          "classes": [
+            "403",
+            "404",
+            "405",
+            "406"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 20,
+      "teacher_id": "S019",
+      "teacher_name": "張○偉",
+      "source_subject": "美術",
+      "source_assignment": "五年級 1~9班",
+      "sections": [
+        {
+          "subject": "美術",
+          "text": "五年級 1~9班",
+          "classes": [
+            "501",
+            "502",
+            "503",
+            "504",
+            "505",
+            "506",
+            "507",
+            "508",
+            "509"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 21,
+      "teacher_id": "S020",
+      "teacher_name": "林○岑",
+      "source_subject": "美術",
+      "source_assignment": "六年級 3~9班",
+      "sections": [
+        {
+          "subject": "美術",
+          "text": "六年級 3~9班",
+          "classes": [
+            "603",
+            "604",
+            "605",
+            "606",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 22,
+      "teacher_id": "S021",
+      "teacher_name": "蔡○婷",
+      "source_subject": "生活自然",
+      "source_assignment": "一年級 1~8班、二年級 1~9班",
+      "sections": [
+        {
+          "subject": "生活自然",
+          "text": "一年級 1~8班、二年級 1~9班",
+          "classes": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "201",
+            "202",
+            "203",
+            "204",
+            "205",
+            "206",
+            "207",
+            "208",
+            "209"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 23,
+      "teacher_id": "S022",
+      "teacher_name": "方○琍",
+      "source_subject": "自然",
+      "source_assignment": "三年級 1、2、6、7、8班",
+      "sections": [
+        {
+          "subject": "自然",
+          "text": "三年級 1、2、6、7、8班",
+          "classes": [
+            "301",
+            "302",
+            "306",
+            "307",
+            "308"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 24,
+      "teacher_id": "S023",
+      "teacher_name": "黃○怡",
+      "source_subject": "自然",
+      "source_assignment": "三年級 3、4班，四年級 1~3班",
+      "sections": [
+        {
+          "subject": "自然",
+          "text": "三年級 3、4班，四年級 1~3班",
+          "classes": [
+            "303",
+            "304",
+            "401",
+            "402",
+            "403"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 25,
+      "teacher_id": "S024",
+      "teacher_name": "王○軒",
+      "source_subject": "自然",
+      "source_assignment": "三年級 5、9班，四年級 8~9班",
+      "sections": [
+        {
+          "subject": "自然",
+          "text": "三年級 5、9班，四年級 8~9班",
+          "classes": [
+            "305",
+            "309",
+            "408",
+            "409"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 26,
+      "teacher_id": "S025",
+      "teacher_name": "孟○典(代)",
+      "source_subject": "自然、健康",
+      "source_assignment": "自然：四年級 4~7班；健康：五年級 2、3、6、8、9班、六年級 8班",
+      "sections": [
+        {
+          "subject": "自然",
+          "text": "四年級 4~7班",
+          "classes": [
+            "404",
+            "405",
+            "406",
+            "407"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "五年級 2、3、6、8、9班、六年級 8班",
+          "classes": [
+            "502",
+            "503",
+            "506",
+            "508",
+            "509",
+            "608"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 27,
+      "teacher_id": "S026",
+      "teacher_name": "黃○豐",
+      "source_subject": "自然、健康",
+      "source_assignment": "自然：五年級 1~6班；健康：五年級 4班",
+      "sections": [
+        {
+          "subject": "自然",
+          "text": "五年級 1~6班",
+          "classes": [
+            "501",
+            "502",
+            "503",
+            "504",
+            "505",
+            "506"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "五年級 4班",
+          "classes": [
+            "504"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 28,
+      "teacher_id": "S027",
+      "teacher_name": "林○伊",
+      "source_subject": "自然",
+      "source_assignment": "五年級 7~9班、六年級 7~9班",
+      "sections": [
+        {
+          "subject": "自然",
+          "text": "五年級 7~9班、六年級 7~9班",
+          "classes": [
+            "507",
+            "508",
+            "509",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 29,
+      "teacher_id": "S028",
+      "teacher_name": "吳○毅",
+      "source_subject": "自然",
+      "source_assignment": "六年級 1~6班",
+      "sections": [
+        {
+          "subject": "自然",
+          "text": "六年級 1~6班",
+          "classes": [
+            "601",
+            "602",
+            "603",
+            "604",
+            "605",
+            "606"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 30,
+      "teacher_id": "S029",
+      "teacher_name": "范○菁(代)",
+      "source_subject": "社會、健康",
+      "source_assignment": "社會：四年級 2、4班，五年級 1~4班；健康：二年級",
+      "sections": [
+        {
+          "subject": "社會",
+          "text": "四年級 2、4班，五年級 1~4班",
+          "classes": [
+            "402",
+            "404",
+            "501",
+            "502",
+            "503",
+            "504"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "二年級",
+          "classes": [
+            "201",
+            "202",
+            "203",
+            "204",
+            "205",
+            "206",
+            "207",
+            "208",
+            "209"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 31,
+      "teacher_id": "S030",
+      "teacher_name": "葉○方",
+      "source_subject": "社會",
+      "source_assignment": "五年級 5~9班、六年級 3~4班",
+      "sections": [
+        {
+          "subject": "社會",
+          "text": "五年級 5~9班、六年級 3~4班",
+          "classes": [
+            "505",
+            "506",
+            "507",
+            "508",
+            "509",
+            "603",
+            "604"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 32,
+      "teacher_id": "S031",
+      "teacher_name": "溫○敏",
+      "source_subject": "社會",
+      "source_assignment": "六年級 1~2班",
+      "sections": [
+        {
+          "subject": "社會",
+          "text": "六年級 1~2班",
+          "classes": [
+            "601",
+            "602"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 33,
+      "teacher_id": "S032",
+      "teacher_name": "黃○蔚",
+      "source_subject": "社會、手作",
+      "source_assignment": "社會：六年級 5、9班；手作：三年級、四年級、五年級",
+      "sections": [
+        {
+          "subject": "社會",
+          "text": "六年級 5、9班",
+          "classes": [
+            "605",
+            "609"
+          ]
+        },
+        {
+          "subject": "手作",
+          "text": "三年級、四年級、五年級",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305",
+            "306",
+            "307",
+            "308",
+            "309",
+            "401",
+            "402",
+            "403",
+            "404",
+            "405",
+            "406",
+            "407",
+            "408",
+            "409",
+            "501",
+            "502",
+            "503",
+            "504",
+            "505",
+            "506",
+            "507",
+            "508",
+            "509"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 34,
+      "teacher_id": "S033",
+      "teacher_name": "蔡○哲",
+      "source_subject": "體育、健康",
+      "source_assignment": "體育：一年級 1~4班、六年級 6~9班；健康：六年級",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "一年級 1~4班、六年級 6~9班",
+          "classes": [
+            "101",
+            "102",
+            "103",
+            "104",
+            "606",
+            "607",
+            "608",
+            "609"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "六年級",
+          "classes": [
+            "601",
+            "602",
+            "603",
+            "604",
+            "605",
+            "606",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 35,
+      "teacher_id": "S034",
+      "teacher_name": "許○威(代)",
+      "source_subject": "體育",
+      "source_assignment": "體育：一年級 5~8班、三年級 8~9班、四年級 5~9班",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "一年級 5~8班、三年級 8~9班、四年級 5~9班",
+          "classes": [
+            "105",
+            "106",
+            "107",
+            "108",
+            "308",
+            "309",
+            "405",
+            "406",
+            "407",
+            "408",
+            "409"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 36,
+      "teacher_id": "S035",
+      "teacher_name": "黃○瑩",
+      "source_subject": "體育",
+      "source_assignment": "二年級 1~3班",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "二年級 1~3班",
+          "classes": [
+            "201",
+            "202",
+            "203"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 37,
+      "teacher_id": "S036",
+      "teacher_name": "彭○玲",
+      "source_subject": "體育",
+      "source_assignment": "二年級 4~5班",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "二年級 4~5班",
+          "classes": [
+            "204",
+            "205"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 38,
+      "teacher_id": "S037",
+      "teacher_name": "黃○榆",
+      "source_subject": "體育",
+      "source_assignment": "二年級 6~9班、四年級 1~4班",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "二年級 6~9班、四年級 1~4班",
+          "classes": [
+            "206",
+            "207",
+            "208",
+            "209",
+            "401",
+            "402",
+            "403",
+            "404"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 39,
+      "teacher_id": "S038",
+      "teacher_name": "李○宸",
+      "source_subject": "體育、健康",
+      "source_assignment": "體育：三年級 1~3班、六年級 1~5班；健康：六年級",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "三年級 1~3班、六年級 1~5班",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "601",
+            "602",
+            "603",
+            "604",
+            "605"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "六年級",
+          "classes": [
+            "601",
+            "602",
+            "603",
+            "604",
+            "605",
+            "606",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 40,
+      "teacher_id": "S039",
+      "teacher_name": "許○龍",
+      "source_subject": "體育、健康",
+      "source_assignment": "體育：三年級 4~5班、五年級 5~9班；健康：三年級",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "三年級 4~5班、五年級 5~9班",
+          "classes": [
+            "304",
+            "305",
+            "505",
+            "506",
+            "507",
+            "508",
+            "509"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "三年級",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305",
+            "306",
+            "307",
+            "308",
+            "309"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 41,
+      "teacher_id": "S040",
+      "teacher_name": "謝○臻",
+      "source_subject": "體育、健康",
+      "source_assignment": "體育：三年級 6~7班、五年級 1~4班；健康：三年級",
+      "sections": [
+        {
+          "subject": "體育",
+          "text": "三年級 6~7班、五年級 1~4班",
+          "classes": [
+            "306",
+            "307",
+            "501",
+            "502",
+            "503",
+            "504"
+          ]
+        },
+        {
+          "subject": "健康",
+          "text": "三年級",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305",
+            "306",
+            "307",
+            "308",
+            "309"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 42,
+      "teacher_id": "S041",
+      "teacher_name": "聶○頤",
+      "source_subject": "健康",
+      "source_assignment": "一年級 2、8班，二年級 1、2、8、9班",
+      "sections": [
+        {
+          "subject": "健康",
+          "text": "一年級 2、8班，二年級 1、2、8、9班",
+          "classes": [
+            "102",
+            "108",
+            "201",
+            "202",
+            "208",
+            "209"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 43,
+      "teacher_id": "S042",
+      "teacher_name": "林○豪",
+      "source_subject": "資訊",
+      "source_assignment": "三年級 1~5班",
+      "sections": [
+        {
+          "subject": "資訊",
+          "text": "三年級 1~5班",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 44,
+      "teacher_id": "S043",
+      "teacher_name": "黃○哲",
+      "source_subject": "資訊",
+      "source_assignment": "三年級 6~9班、六年級 1~6班",
+      "sections": [
+        {
+          "subject": "資訊",
+          "text": "三年級 6~9班、六年級 1~6班",
+          "classes": [
+            "306",
+            "307",
+            "308",
+            "309",
+            "601",
+            "602",
+            "603",
+            "604",
+            "605",
+            "606"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 45,
+      "teacher_id": "S044",
+      "teacher_name": "李○憲",
+      "source_subject": "資訊",
+      "source_assignment": "四年級 1班、五年級 1~9班",
+      "sections": [
+        {
+          "subject": "資訊",
+          "text": "四年級 1班、五年級 1~9班",
+          "classes": [
+            "401",
+            "501",
+            "502",
+            "503",
+            "504",
+            "505",
+            "506",
+            "507",
+            "508",
+            "509"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 46,
+      "teacher_id": "S045",
+      "teacher_name": "邱○煜",
+      "source_subject": "資訊",
+      "source_assignment": "四年級 2~9班、六年級 7~9班",
+      "sections": [
+        {
+          "subject": "資訊",
+          "text": "四年級 2~9班、六年級 7~9班",
+          "classes": [
+            "402",
+            "403",
+            "404",
+            "405",
+            "406",
+            "407",
+            "408",
+            "409",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 47,
+      "teacher_id": "S046",
+      "teacher_name": "盧○娟",
+      "source_subject": "本土語",
+      "source_assignment": "一年級 1~3班、二年級 1、2、8班、四年級 1~3班、五年級 1~3班、六年級 1~3班",
+      "sections": [
+        {
+          "subject": "本土語",
+          "text": "一年級 1~3班、二年級 1、2、8班、四年級 1~3班、五年級 1~3班、六年級 1~3班",
+          "classes": [
+            "101",
+            "102",
+            "103",
+            "201",
+            "202",
+            "208",
+            "401",
+            "402",
+            "403",
+            "501",
+            "502",
+            "503",
+            "601",
+            "602",
+            "603"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 48,
+      "teacher_id": "S047",
+      "teacher_name": "鍾○平",
+      "source_subject": "本土語",
+      "source_assignment": "一年級 3~5班、二年級 4~6班、四年級 4~6班、五年級 4~6班、六年級 4~6班",
+      "sections": [
+        {
+          "subject": "本土語",
+          "text": "一年級 3~5班、二年級 4~6班、四年級 4~6班、五年級 4~6班、六年級 4~6班",
+          "classes": [
+            "103",
+            "104",
+            "105",
+            "204",
+            "205",
+            "206",
+            "404",
+            "405",
+            "406",
+            "504",
+            "505",
+            "506",
+            "604",
+            "605",
+            "606"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 49,
+      "teacher_id": "S048",
+      "teacher_name": "黃○昕(代)",
+      "source_subject": "本土語",
+      "source_assignment": "一年級 6~8班、二年級 3、7、9班、四年級 7~9班、五年級 7~9班、六年級 1、8、9班",
+      "sections": [
+        {
+          "subject": "本土語",
+          "text": "一年級 6~8班、二年級 3、7、9班、四年級 7~9班、五年級 7~9班、六年級 1、8、9班",
+          "classes": [
+            "106",
+            "107",
+            "108",
+            "203",
+            "207",
+            "209",
+            "407",
+            "408",
+            "409",
+            "507",
+            "508",
+            "509",
+            "601",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 50,
+      "teacher_id": "S049",
+      "teacher_name": "賴○伶",
+      "source_subject": "圖書資訊",
+      "source_assignment": "中年級 1~5班",
+      "sections": [
+        {
+          "subject": "圖書資訊",
+          "text": "中年級 1~5班",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305",
+            "401",
+            "402",
+            "403",
+            "404",
+            "405"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 51,
+      "teacher_id": "S050",
+      "teacher_name": "黃○彥",
+      "source_subject": "圖書資訊",
+      "source_assignment": "中年級 6~9班",
+      "sections": [
+        {
+          "subject": "圖書資訊",
+          "text": "中年級 6~9班",
+          "classes": [
+            "306",
+            "307",
+            "308",
+            "309",
+            "406",
+            "407",
+            "408",
+            "409"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 52,
+      "teacher_id": "S051",
+      "teacher_name": "李○怡",
+      "source_subject": "圖書資訊",
+      "source_assignment": "高年級 1~9班",
+      "sections": [
+        {
+          "subject": "圖書資訊",
+          "text": "高年級 1~9班",
+          "classes": [
+            "501",
+            "502",
+            "503",
+            "504",
+            "505",
+            "506",
+            "507",
+            "508",
+            "509",
+            "601",
+            "602",
+            "603",
+            "604",
+            "605",
+            "606",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 53,
+      "teacher_id": "S052",
+      "teacher_name": "阮○雯",
+      "source_subject": "書法",
+      "source_assignment": "中年級 1~9班、高年級 1~9班",
+      "sections": [
+        {
+          "subject": "書法",
+          "text": "中年級 1~9班、高年級 1~9班",
+          "classes": [
+            "301",
+            "302",
+            "303",
+            "304",
+            "305",
+            "306",
+            "307",
+            "308",
+            "309",
+            "401",
+            "402",
+            "403",
+            "404",
+            "405",
+            "406",
+            "407",
+            "408",
+            "409",
+            "501",
+            "502",
+            "503",
+            "504",
+            "505",
+            "506",
+            "507",
+            "508",
+            "509",
+            "601",
+            "602",
+            "603",
+            "604",
+            "605",
+            "606",
+            "607",
+            "608",
+            "609"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 54,
+      "teacher_id": "S053",
+      "teacher_name": "胡○菁",
+      "source_subject": "彈性數學",
+      "source_assignment": "六年級 8班",
+      "sections": [
+        {
+          "subject": "彈性數學",
+          "text": "六年級 8班",
+          "classes": [
+            "608"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 55,
+      "teacher_id": "S054",
+      "teacher_name": "黃○崴",
+      "source_subject": "生活雙語",
+      "source_assignment": "一年級 2~4班",
+      "sections": [
+        {
+          "subject": "生活雙語",
+          "text": "一年級 2~4班",
+          "classes": [
+            "102",
+            "103",
+            "104"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 56,
+      "teacher_id": "S055",
+      "teacher_name": "羅○月",
+      "source_subject": "生活雙語",
+      "source_assignment": "二年級 1~4班",
+      "sections": [
+        {
+          "subject": "生活雙語",
+          "text": "二年級 1~4班",
+          "classes": [
+            "201",
+            "202",
+            "203",
+            "204"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 57,
+      "teacher_id": "S056",
+      "teacher_name": "何○盈",
+      "source_subject": "生活雙語",
+      "source_assignment": "二年級 5~9班",
+      "sections": [
+        {
+          "subject": "生活雙語",
+          "text": "二年級 5~9班",
+          "classes": [
+            "205",
+            "206",
+            "207",
+            "208",
+            "209"
+          ]
+        }
+      ],
+      "status": "expanded"
+    },
+    {
+      "source_row": 58,
+      "teacher_id": "S057",
+      "teacher_name": "邱○婷",
+      "source_subject": "專任輔導",
+      "source_assignment": "專任輔導教師",
+      "sections": [
+        {
+          "subject": "專任輔導",
+          "text": "專任輔導教師",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 59,
+      "teacher_id": "S058",
+      "teacher_name": "林○慈(代)",
+      "source_subject": "專任輔導",
+      "source_assignment": "專任輔導教師",
+      "sections": [
+        {
+          "subject": "專任輔導",
+          "text": "專任輔導教師",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 60,
+      "teacher_id": "S059",
+      "teacher_name": "王○栗",
+      "source_subject": "行政支援",
+      "source_assignment": "創意組",
+      "sections": [
+        {
+          "subject": "行政支援",
+          "text": "創意組",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 61,
+      "teacher_id": "S060",
+      "teacher_name": "劉○玲",
+      "source_subject": "行政支援",
+      "source_assignment": "創意組",
+      "sections": [
+        {
+          "subject": "行政支援",
+          "text": "創意組",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 62,
+      "teacher_id": "S061",
+      "teacher_name": "李○展",
+      "source_subject": "特教支援",
+      "source_assignment": "創意組",
+      "sections": [
+        {
+          "subject": "特教支援",
+          "text": "創意組",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 63,
+      "teacher_id": "S062",
+      "teacher_name": "張○",
+      "source_subject": "行政支援",
+      "source_assignment": "創意組",
+      "sections": [
+        {
+          "subject": "行政支援",
+          "text": "創意組",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 64,
+      "teacher_id": "S063",
+      "teacher_name": "楊○玲",
+      "source_subject": "特殊教育",
+      "source_assignment": "學習中心",
+      "sections": [
+        {
+          "subject": "特殊教育",
+          "text": "學習中心",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 65,
+      "teacher_id": "S064",
+      "teacher_name": "陳○妏",
+      "source_subject": "特殊教育",
+      "source_assignment": "學習中心",
+      "sections": [
+        {
+          "subject": "特殊教育",
+          "text": "學習中心",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 66,
+      "teacher_id": "S065",
+      "teacher_name": "劉○如",
+      "source_subject": "特殊教育",
+      "source_assignment": "學習中心",
+      "sections": [
+        {
+          "subject": "特殊教育",
+          "text": "學習中心",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 67,
+      "teacher_id": "S066",
+      "teacher_name": "李○鈺(代)",
+      "source_subject": "特殊教育",
+      "source_assignment": "學習中心",
+      "sections": [
+        {
+          "subject": "特殊教育",
+          "text": "學習中心",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 68,
+      "teacher_id": "S067",
+      "teacher_name": "吳○佳(代)",
+      "source_subject": "特殊教育",
+      "source_assignment": "學習中心",
+      "sections": [
+        {
+          "subject": "特殊教育",
+          "text": "學習中心",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 69,
+      "teacher_id": "S068",
+      "teacher_name": "林○儀",
+      "source_subject": "增置支援",
+      "source_assignment": "增置教師",
+      "sections": [
+        {
+          "subject": "增置支援",
+          "text": "增置教師",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 70,
+      "teacher_id": "S069",
+      "teacher_name": "林○巽",
+      "source_subject": "增置支援",
+      "source_assignment": "增置教師",
+      "sections": [
+        {
+          "subject": "增置支援",
+          "text": "增置教師",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    },
+    {
+      "source_row": 71,
+      "teacher_id": "S070",
+      "teacher_name": "蘇○安",
+      "source_subject": "專業團隊",
+      "source_assignment": "心理師",
+      "sections": [
+        {
+          "subject": "專業團隊",
+          "text": "心理師",
+          "classes": []
+        }
+      ],
+      "status": "non_timetable_support"
+    }
+  ]
+}

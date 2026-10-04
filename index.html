@@ -27,6 +27,14 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
-  <script src="https://polik18.github.io/assets/site-stats.js" defer></script>
+  <script>
+    // 站點統計只在正式 GitHub Pages 域名載入，避免本機開發觸發跨網域錯誤。
+    if (location.hostname === 'polik18.github.io') {
+      const stats = document.createElement('script');
+      stats.src = 'https://polik18.github.io/assets/site-stats.js';
+      stats.defer = true;
+      document.body.appendChild(stats);
+    }
+  </script>
 </body>
 </html>
