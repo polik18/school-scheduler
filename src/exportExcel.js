@@ -1,23 +1,41 @@
 import { assignmentText } from './model/staffing.js';
 
+const DAY_TEXT = { Mon: '星期一', Tue: '星期二', Wed: '星期三', Thu: '星期四', Fri: '星期五', Sat: '星期六', Sun: '星期日' };
+export const formatWeekday = value => DAY_TEXT[value] || value || '';
+export const yesNoText = value => value ? '是' : '否';
+export const scheduleRowsForExport = schedule => (schedule || []).map(x => ({
+  班級: x.class || '',
+  科目: x.subject || '',
+  教師: x.teacher || '',
+  星期: formatWeekday(x.day),
+  節次: x.period ?? '',
+  教室: x.room_id || '',
+  是否鎖定: yesNoText(x.locked),
+  是否人工調整: yesNoText(x.manual)
+}));
+
 // 匯出課表：班級／教師／教室／完整排課／驗收報告
 export async function downloadExcel(schedule, rep = {}) {
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
   const add = (n, d) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(d), n);
-  add('完整排課', schedule);
-  add('班級課表', schedule.map(x => ({
-    班級: x.class, 星期: x.day, 節次: x.period, 科目: x.subject, 教師: x.teacher, 教室: x.room_id
+  const rows = scheduleRowsForExport(schedule);
+  add('完整排課', rows);
+  add('班級課表', rows.map(x => ({
+    班級: x.班級, 星期: x.星期, 節次: x.節次, 科目: x.科目, 教師: x.教師, 教室: x.教室
   })));
-  add('教師課表', schedule.map(x => ({
-    教師: x.teacher, 星期: x.day, 節次: x.period, 班級: x.class, 科目: x.subject
+  add('教師課表', rows.map(x => ({
+    教師: x.教師, 星期: x.星期, 節次: x.節次, 班級: x.班級, 科目: x.科目
   })));
-  add('教室使用', schedule.map(x => ({
-    教室: x.room_id, 星期: x.day, 節次: x.period, 課程: x.subject
+  add('教室使用', rows.map(x => ({
+    教室: x.教室, 星期: x.星期, 節次: x.節次, 課程: x.科目
   })));
   add('驗收報告', [{
     總堂數: rep.total, 未排入: (rep.pending || 0),
-    成功: rep.success ?? true, 評分: rep.score ?? 0
+    是否完成: yesNoText(rep.success ?? true),
+    '排入完成率（%）': rep.quality?.completionPercent ?? '',
+    硬性衝突: rep.quality?.hardConflicts ?? '',
+    '課程分散度（滿分 100）': rep.quality?.distributionScore ?? ''
   }]);
   XLSX.writeFile(wb, 'school-result.xlsx');
 }

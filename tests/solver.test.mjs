@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mapLegacyInput } from '../src/model/schema.js';
-import { solveSchedule } from '../src/model/solver.js';
+import { buildQualityReport, solveSchedule } from '../src/model/solver.js';
 import { diagnosePendingCourse } from '../src/model/diagnosis.js';
 
 // 簡易但真實的範例資料（3 班 3 師）
@@ -223,4 +223,28 @@ test('mapLegacyInput 不會把字串 false 當成連堂', () => {
   });
   assert.equal(mapped.courses[0].double_period, false);
   assert.deepEqual(mapped.teachers[0].unavailable, [{ weekday: 'Mon', period: 1 }]);
+});
+
+test('solveSchedule 提供可供背景介面顯示的真實進度', () => {
+  const progress = [];
+  const input = buildSampleInput();
+  const result = solveSchedule({ ...input, days: ['Mon', 'Tue', 'Wed'], periodsPerDay: 8 }, {
+    onProgress: value => progress.push(value)
+  });
+  assert.equal(result.success, true);
+  assert.ok(progress.length >= 1);
+  assert.equal(progress.at(-1).placed, result.schedule.length);
+  assert.equal(progress.at(-1).total, 18);
+  assert.ok(progress.every((item, index) => index === 0 || item.placed >= progress[index - 1].placed));
+});
+
+test('品質報告清楚區分完成率、硬性衝突與課程分散度', () => {
+  const report = buildQualityReport([
+    { class: '101', subject: '國語', teacher: 'T01', day: 'Mon', period: 1 },
+    { class: '101', subject: '國語', teacher: 'T01', day: 'Mon', period: 2 }
+  ], [{ class: '101', subject: '數學' }]);
+  assert.equal(report.completionPercent, 66.7);
+  assert.equal(report.hardConflicts, 0);
+  assert.equal(report.repeatedSameSubject, 1);
+  assert.equal(report.distributionScore, 50);
 });

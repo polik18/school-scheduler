@@ -48,7 +48,7 @@ function fixedOccupancy(fixed = []) {
   return { classes, teachers };
 }
 
-export function solveSchedule(input) {
+export function solveSchedule(input, options = {}) {
   const { courses = [], days = DAYS, periodsPerDay = 8, rooms = [], fixed = [], teachers = [], locked = [] } = input;
   const timeoutMs = input.timeoutMs ?? 30000;
   const startTime = Date.now();
@@ -62,6 +62,17 @@ export function solveSchedule(input) {
   let timedOut = false;
   let bestSchedule = [];
   let bestScore = -Infinity;
+  let nodes = 0;
+  let backtracks = 0;
+  let lastProgressAt = 0;
+  const totalLessons = tasks.reduce((sum, task) => sum + (task.duration || 1), 0);
+  const reportProgress = (force = false) => {
+    if (typeof options.onProgress !== 'function') return;
+    const now = Date.now();
+    if (!force && now - lastProgressAt < 250) return;
+    lastProgressAt = now;
+    options.onProgress({ placed: bestSchedule.length, total: totalLessons, nodes, backtracks, elapsedMs: now - startTime });
+  };
 
   const span = (task, start) => Array.from({ length: task.duration || 1 }, (_, offset) => ({ day: start.day, period: start.period + offset }));
   const classBusy = (classId, slot) => fixedOcc.classes[classId]?.has(`${slot.day}-${slot.period}`) || !!clsSlot[slotKey(classId, slot.day, slot.period)];
@@ -135,6 +146,7 @@ export function solveSchedule(input) {
     if (current.length > bestSchedule.length || (current.length === bestSchedule.length && score > bestScore)) {
       bestSchedule = current.map(x => ({ ...x }));
       bestScore = score;
+      reportProgress();
     }
   };
 
@@ -149,6 +161,8 @@ export function solveSchedule(input) {
   rememberBest();
 
   const search = remaining => {
+    nodes++;
+    reportProgress();
     if (Date.now() - startTime > timeoutMs) { timedOut = true; return false; }
     if (!remaining.length) { rememberBest(); return true; }
     let selected = null, selectedCandidates = null;
@@ -166,6 +180,7 @@ export function solveSchedule(input) {
       // 這裡不重複做一次 forward-check，避免大型資料每層雙倍掃描。
       if (search(rest)) return true;
       remove(selected);
+      backtracks++;
       if (timedOut) return false;
     }
     return false;
@@ -180,12 +195,15 @@ export function solveSchedule(input) {
   if (invalidLocks.length) diagnostics.push({ type: 'lock', message: `${invalidLocks.length} 筆鎖定課程無法放入指定時段。` });
   if (timedOut) diagnostics.push({ type: 'timeout', message: `排課已達 ${timeoutMs}ms 時間上限，保留目前最完整的可行結果。` });
   if (pending.length) diagnostics.push({ type: 'constraint', message: `尚有 ${pending.length} 堂課程未能排入，請檢視衝突診斷並調整限制。` });
-  return {
+  const result = {
     success: pending.length === 0 && invalidLocks.length === 0,
     schedule: publicSchedule,
     score: scoreSchedule(publicSchedule), pending, diagnostics, timedOut,
-    elapsedMs: Date.now() - startTime
+    elapsedMs: Date.now() - startTime,
+    quality: buildQualityReport(publicSchedule, pending, invalidLocks)
   };
+  reportProgress(true);
+  return result;
 }
 
 // 結果品質指標，不宣稱為全域最佳解。
@@ -199,6 +217,34 @@ function scoreSchedule(schedule) {
     Object.values(counts).forEach(count => { if (count > 1) score -= 30 * (count - 1); });
   });
   return score;
+}
+
+export function buildQualityReport(schedule = [], pending = [], invalidLocks = []) {
+  const total = schedule.length + pending.length;
+  const slotConflicts = new Set();
+  const seen = { class: new Set(), teacher: new Set(), room: new Set() };
+  schedule.forEach(lesson => {
+    const suffix = `${lesson.day}-${lesson.period}`;
+    for (const [kind, id] of [['class', lesson.class], ['teacher', lesson.teacher], ['room', lesson.room_id]]) {
+      if (!id) continue;
+      const key = `${id}-${suffix}`;
+      if (seen[kind].has(key)) slotConflicts.add(`${kind}-${key}`);
+      seen[kind].add(key);
+    }
+  });
+  const groups = {};
+  schedule.forEach(lesson => {
+    const key = `${lesson.class}-${lesson.subject}-${lesson.day}`;
+    groups[key] = (groups[key] || 0) + 1;
+  });
+  const repeatedSameSubject = Object.values(groups).reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  return {
+    completionPercent: total ? Math.round(schedule.length / total * 1000) / 10 : 100,
+    hardConflicts: slotConflicts.size + invalidLocks.length,
+    distributionScore: schedule.length ? Math.max(0, Math.round((1 - repeatedSameSubject / schedule.length) * 100)) : 100,
+    repeatedSameSubject,
+    explanation: '課程分散度以「同班同科在同一天的重複節數」估算；100 分代表沒有這類重複，並非全域最佳解保證。'
+  };
 }
 
 function sortHardCourses(tasks) {

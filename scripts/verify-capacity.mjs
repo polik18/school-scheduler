@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import * as XLSX from 'xlsx';
 import { mapLegacyInput } from '../src/model/schema.js';
 import { solveSchedule } from '../src/model/solver.js';
+import { readScheduleWorkbook } from '../src/importExcel.js';
 
 const wb = XLSX.read(fs.readFileSync(new URL('../public/school-scheduler-template.xlsx', import.meta.url)), { type: 'buffer' });
-const get = name => XLSX.utils.sheet_to_json(wb.Sheets[name], { range: 1, defval: '' });
+const input60 = readScheduleWorkbook(XLSX, wb);
 const raw = {
-  classes: get('Classes'), teachers: get('Teachers'), courses: get('Courses'),
-  availability: get('TeacherAvailability'), rooms: get('Rooms'), fixed: get('FixedActivities')
+  classes: [...input60.classes], teachers: [...input60.teachers], courses: [...input60.courses],
+  rooms: [...input60.rooms], fixed: [...input60.fixedActivities]
 };
 
 // 將 60 班標準範本擴成 72 班；新班同時包含跨班科任、連堂、專科教室與固定活動。

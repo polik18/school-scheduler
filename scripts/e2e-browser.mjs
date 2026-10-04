@@ -56,10 +56,11 @@ try {
   assert(await page.getByText('資料格式與必要欄位均已通過驗證。').isVisible(), '標準範本未通過驗證');
   await page.getByRole('button', { name: '執行智慧排課 →' }).click();
   await page.getByRole('button', { name: '取消排課' }).waitFor({ timeout: 5000 });
+  await page.getByRole('status').filter({ hasText: '目前最佳方案' }).waitFor({ timeout: 5000 });
   await page.getByRole('status').filter({ hasText: '排課成功' }).waitFor({ timeout: 45000 });
   const stats = await page.locator('.result-stats > div').allTextContents();
-  assert(stats.some(x => x.includes('924') && x.includes('已排入')), `已排節數不是 924：${stats.join(' | ')}`);
-  assert(stats.some(x => x.includes('0') && x.includes('待處理')), `待處理不是 0：${stats.join(' | ')}`);
+  assert(stats.some(x => x.includes('100%') && x.includes('排入完成率')), `完成率不是 100%：${stats.join(' | ')}`);
+  assert(stats.some(x => x.includes('0') && x.includes('硬性衝突')), `硬性衝突不是 0：${stats.join(' | ')}`);
   const [staffingDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '匯出教職員配置' }).click()

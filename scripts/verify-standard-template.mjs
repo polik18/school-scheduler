@@ -1,17 +1,11 @@
 import fs from 'node:fs';
 import * as XLSX from 'xlsx';
-import { mapLegacyInput } from '../src/model/schema.js';
 import { solveSchedule } from '../src/model/solver.js';
-import { validateInput } from '../src/importExcel.js';
+import { readScheduleWorkbook, validateInput } from '../src/importExcel.js';
 
 const file = new URL('../public/school-scheduler-template.xlsx', import.meta.url);
 const wb = XLSX.read(fs.readFileSync(file), { type: 'buffer' });
-const get = name => XLSX.utils.sheet_to_json(wb.Sheets[name], { range: 1, defval: '' });
-const input = mapLegacyInput({
-  classes: get('Classes'), teachers: get('Teachers'), courses: get('Courses'),
-  availability: get('TeacherAvailability'), rooms: get('Rooms'),
-  fixed: get('FixedActivities'), staffAssignments: get('StaffAssignments')
-});
+const input = readScheduleWorkbook(XLSX, wb);
 
 if (input.classes.length !== 60) throw new Error(`標準範本班級應為 60，實際 ${input.classes.length}`);
 if (input.teachers.length !== 136) throw new Error(`標準範本教師應為 136，實際 ${input.teachers.length}`);

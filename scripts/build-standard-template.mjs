@@ -155,22 +155,54 @@ const staffAssignments = adminRows.map(r => {
 });
 
 const out = XLSX.utils.book_new();
-const add = (name, headers, values, note) => {
-  const data = [[note], headers, ...values.map(x => headers.map(h => x[h] ?? ''))];
+const weekdayText = { Mon: '星期一', Tue: '星期二', Wed: '星期三', Thu: '星期四', Fri: '星期五', Sat: '星期六' };
+const roomTypeText = value => ({ normal: '普通教室', none: '不限教室' }[value] || value);
+const yesNo = value => value ? '是' : '否';
+const add = (name, columns, values, note) => {
+  const data = [[note], columns.map(x => x.label), ...values.map(row => columns.map(column => {
+    const value = row[column.key] ?? '';
+    return column.format ? column.format(value) : value;
+  }))];
   XLSX.utils.book_append_sheet(out, XLSX.utils.aoa_to_sheet(data), name);
 };
-add('Classes', ['class_id', 'grade', 'class_name', 'students', 'homeroom_teacher', 'note'], classes,
-  '標準範本：第 3 列起皆為可刪除的 60 班範例資料；請保留第 2 列英文欄位名。');
-add('Teachers', ['teacher_id', 'name', 'subject', 'max_daily_period', 'max_continuous_period', 'identity_note'], teachers,
-  '標準範本：第 3 列起皆為可刪除的中性範例人員；請保留第 2 列英文欄位名。');
-add('Courses', ['class', 'subject', 'teacher', 'weekly_period', 'room_required', 'double_period'], courses,
-  '可刪除範例：專科每班 1 節，級任國語與數學各 3 節；正式排課請依本校課程計畫修改，並保留第 2 列欄位名。');
-add('TeacherAvailability', ['teacher', 'weekday', 'period', 'available', 'reason'], availability,
-  '僅供演示教師不可排時段。');
-add('Rooms', ['room_id', 'type', 'capacity'], rooms, '範例以各班普通教室為主。');
-add('FixedActivities', ['activity', 'weekday', 'period', 'class', 'teacher'], fixed, '僅供演示週一第 1 節固定活動。');
-add('StaffAssignments', ['department', 'job_title', 'teacher', 'name', 'note'], staffAssignments,
-  '由匿名化配置簿整理，可用於匯出教職員配置結果。');
+XLSX.utils.book_append_sheet(out, XLSX.utils.aoa_to_sheet([
+  ['60 班標準排課範本｜使用說明'],
+  ['1. 可直接上傳本檔試跑；第 3 列起都是可刪除、可改寫的示範資料。'],
+  ['2. 請勿刪除各工作表第 2 列欄位名稱；工作表名稱也請保留。'],
+  ['3. 教師代碼、班級代碼與教室代碼必須在各工作表中一致。'],
+  ['4. 星期請填「星期一」至「星期五」；是非欄位請填「是」或「否」。'],
+  ['5. 「是否可排」填「否」代表該教師在指定時段不可排課。'],
+  ['6. 本檔為排課功能示範，不代表任何特定學校的正式課程計畫。'],
+  ['7. 建議先保留範例試跑成功，再逐步換成貴校資料並分批檢查。']
+]), '使用說明');
+add('班級', [
+  ['班級代碼','class_id'], ['年級','grade'], ['班級名稱','class_name'], ['學生數','students'], ['導師代碼','homeroom_teacher'], ['備註','note']
+].map(([label,key])=>({label,key})), classes,
+  '標準範本：第 3 列起為可刪除的 60 班範例資料；請保留第 2 列中文欄位名稱。');
+add('教師', [
+  ['教師代碼','teacher_id'], ['姓名','name'], ['主要領域','subject'], ['每日最多節數','max_daily_period'], ['最多連續節數','max_continuous_period'], ['身分備註','identity_note']
+].map(([label,key])=>({label,key})), teachers,
+  '標準範本：第 3 列起為可刪除的中性範例人員；請保留第 2 列中文欄位名稱。');
+add('課程', [
+  {label:'班級代碼',key:'class'}, {label:'科目',key:'subject'}, {label:'教師代碼',key:'teacher'},
+  {label:'每週節數',key:'weekly_period'}, {label:'教室類型',key:'room_required',format:roomTypeText},
+  {label:'是否連堂',key:'double_period',format:yesNo}
+], courses, '可刪除範例：級任國語與數學各 3 節，另含科任課程；正式排課請依本校課程計畫修改。');
+add('教師可排時段', [
+  {label:'教師代碼',key:'teacher'}, {label:'星期',key:'weekday',format:value=>weekdayText[value]||value},
+  {label:'節次',key:'period'}, {label:'是否可排',key:'available',format:yesNo}, {label:'原因',key:'reason'}
+], availability, '僅供演示教師不可排時段；「是否可排」填「否」代表不可排。');
+add('教室', [
+  {label:'教室代碼',key:'room_id'}, {label:'教室類型',key:'type',format:roomTypeText}, {label:'容量',key:'capacity'}
+], rooms, '範例以各班普通教室為主；專科教室類型須與課程表一致。');
+add('固定活動', [
+  {label:'活動名稱',key:'activity'}, {label:'星期',key:'weekday',format:value=>weekdayText[value]||value},
+  {label:'節次',key:'period'}, {label:'班級代碼',key:'class'}, {label:'教師代碼',key:'teacher'}
+], fixed, '僅供演示星期一第 1 節固定活動。');
+add('行政職務', [
+  {label:'處室／單位',key:'department'}, {label:'職稱',key:'job_title'}, {label:'教師代碼',key:'teacher'},
+  {label:'姓名',key:'name'}, {label:'備註',key:'note'}
+], staffAssignments, '由匿名化配置資料整理，可用於建立教職員配置資訊。');
 
 fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, XLSX.write(out, { type: 'buffer', bookType: 'xlsx' }));

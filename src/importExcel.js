@@ -1,19 +1,34 @@
 import {mapLegacyInput} from './model/schema.js';
 import {staffingPlanFromRows, validateStaffingPlan} from './model/staffing.js';
 
-// 從 raw rows（header:1 陣列）中偵測「含英文欄位名」的那一行當標題，回傳資料列
-function sheetRows(rows, keys){
+const FIELD_ALIASES = {
+ classes:{'班級代碼':'class_id','班級編號':'class_id','年級':'grade','班級名稱':'class_name','學生數':'students','導師代碼':'homeroom_teacher','備註':'note'},
+ teachers:{'教師代碼':'teacher_id','教師編號':'teacher_id','姓名':'name','主要領域':'subject','科目':'subject','每日最多節數':'max_daily_period','最多連續節數':'max_continuous_period','身分備註':'identity_note'},
+ courses:{'班級代碼':'class','科目':'subject','教師代碼':'teacher','每週節數':'weekly_period','教室類型':'room_required','是否連堂':'double_period'},
+ availability:{'教師代碼':'teacher','星期':'weekday','節次':'period','是否可排':'available','原因':'reason'},
+ rooms:{'教室代碼':'room_id','教室編號':'room_id','教室類型':'type','容量':'capacity'},
+ fixed:{'活動名稱':'activity','星期':'weekday','節次':'period','班級代碼':'class','教師代碼':'teacher'},
+ staff:{'處室／單位':'department','處室 / 單位':'department','職稱':'job_title','教師代碼':'teacher','姓名':'name','備註':'note'}
+};
+
+const canonicalHeader=(value,aliases)=>{
+ const text=String(value??'').trim();
+ return aliases[text]||text.toLowerCase();
+};
+
+// 從 raw rows 偵測中文或英文欄位列，內部統一轉成 canonical key。
+function sheetRows(rows, keys, aliases={}){
  if(!rows||!rows.length) return [];
  const lower=keys.map(k=>k.toLowerCase());
  let bestRow=null, bestScore=0;
  rows.forEach(r=>{
-  const cells=(r||[]).map(c=>String(c||'').toLowerCase());
+  const cells=(r||[]).map(c=>canonicalHeader(c,aliases));
   let score=0;
   lower.forEach(k=>{ if(cells.includes(k)) score++; });
   if(score>bestScore){ bestScore=score; bestRow=r; }
  });
  if(!bestRow || bestScore<2) return [];
- const header=bestRow.map(c=>String(c||'').toLowerCase());
+ const header=bestRow.map(c=>canonicalHeader(c,aliases));
  const idx={};
  header.forEach((h,i)=>{ if(!(h in idx)) idx[h]=i; });
  const data=[];
@@ -27,11 +42,11 @@ function sheetRows(rows, keys){
  return data;
 }
 
-function sheet(XLSX,wb,names,keys){
+function sheet(XLSX,wb,names,keys,aliases){
  const name=names.find(n=>wb.Sheets[n]);
  if(!name) return [];
  const raw=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1});
- return normalize(sheetRows(raw,keys));
+ return normalize(sheetRows(raw,keys,aliases));
 }
 function normalize(rows){return rows.map(r=>Object.fromEntries(Object.entries(r).map(([k,v])=>[String(k).trim(),typeof v==='string'?v.trim():v])))}
 
@@ -47,19 +62,23 @@ export function readSchoolExcel(file){
      resolve({kind:'staffing',staffingPlan,staffingValidation:validateStaffingPlan(staffingPlan),classes:[],teachers:[],courses:[],rooms:[],fixedActivities:[],staffAssignments:[]});
      return;
     }
-    resolve({...mapLegacyInput({
-     classes:normalize(sheet(XLSX,wb,['Classes','班級'],['class_id','grade','class_name','students'])),
-     teachers:normalize(sheet(XLSX,wb,['Teachers','教師'],['teacher_id','name','subject','max_daily_period','max_continuous_period'])),
-     courses:normalize(sheet(XLSX,wb,['Courses','課程'],['class','subject','teacher','weekly_period','room_required','double_period'])),
-     availability:normalize(sheet(XLSX,wb,['TeacherAvailability','教師可用時間'],['teacher','weekday','period','available','reason'])),
-     rooms:normalize(sheet(XLSX,wb,['Rooms','教室'],['room_id','type','capacity'])),
-     fixed:normalize(sheet(XLSX,wb,['FixedActivities','固定活動'],['activity','weekday','period','class','teacher'])),
-     staffAssignments:normalize(sheet(XLSX,wb,['StaffAssignments','行政職務'],['department','job_title','teacher','name','note']))
-    }),kind:'schedule'});
+    resolve({...readScheduleWorkbook(XLSX,wb),kind:'schedule'});
    }catch(err){reject(err)}
   };
   r.onerror=reject;
   r.readAsArrayBuffer(file);
+ });
+}
+
+export function readScheduleWorkbook(XLSX,wb){
+ return mapLegacyInput({
+  classes:sheet(XLSX,wb,['Classes','班級'],['class_id','grade','class_name','students'],FIELD_ALIASES.classes),
+  teachers:sheet(XLSX,wb,['Teachers','教師'],['teacher_id','name','subject','max_daily_period','max_continuous_period'],FIELD_ALIASES.teachers),
+  courses:sheet(XLSX,wb,['Courses','課程'],['class','subject','teacher','weekly_period','room_required','double_period'],FIELD_ALIASES.courses),
+  availability:sheet(XLSX,wb,['TeacherAvailability','教師可用時間','教師可排時段'],['teacher','weekday','period','available','reason'],FIELD_ALIASES.availability),
+  rooms:sheet(XLSX,wb,['Rooms','教室'],['room_id','type','capacity'],FIELD_ALIASES.rooms),
+  fixed:sheet(XLSX,wb,['FixedActivities','固定活動'],['activity','weekday','period','class','teacher'],FIELD_ALIASES.fixed),
+  staffAssignments:sheet(XLSX,wb,['StaffAssignments','行政職務'],['department','job_title','teacher','name','note'],FIELD_ALIASES.staff)
  });
 }
 

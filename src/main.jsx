@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { readSchoolExcel, validateInput } from './importExcel.js';
 import { solveSchedule } from './model/solver.js';
@@ -24,7 +24,16 @@ export default function App() {
   const [activeView, setActiveView] = useState('class');
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [solving, setSolving] = useState(false);
+  const [solveProgress, setSolveProgress] = useState(null);
+  const [solveElapsed, setSolveElapsed] = useState(0);
   const workerRef = useRef(null);
+  const solveStartedAt = useRef(0);
+
+  useEffect(() => {
+    if (!solving) return undefined;
+    const timer = setInterval(() => setSolveElapsed(Date.now() - solveStartedAt.current), 250);
+    return () => clearInterval(timer);
+  }, [solving]);
 
   // 匯入檔案
   const handleImport = useCallback(async (file) => {
@@ -50,12 +59,16 @@ export default function App() {
     if (!data) { setError('請先匯入資料'); return; }
     setError(''); setSchedule(null); setStatus('正在排課…');
     setSolving(true);
+    solveStartedAt.current = Date.now();
+    setSolveElapsed(0);
+    setSolveProgress({ placed: 0, total: data.courses.reduce((sum, course) => sum + Number(course.weekly_period || 1), 0), nodes: 0, backtracks: 0, elapsedMs: 0 });
     const payload = { courses: data.courses, days: settings.days, periodsPerDay: settings.periodsPerDay,
       rooms: data.rooms, fixed: data.fixedActivities, teachers: data.teachers, classes: data.classes };
     const accept = result => {
       setSchedule(result);
       setSelectedLesson(null);
       setSolving(false);
+      setSolveProgress(null);
       const seconds = ((result.elapsedMs || 0) / 1000).toFixed(1);
       if (!result.success) setStatus(`排課完成（${seconds} 秒），但有課程未能排入，請檢視衝突診斷。`);
       else setStatus(`排課成功！耗時 ${seconds} 秒。`);
@@ -65,6 +78,10 @@ export default function App() {
       const worker = new Worker(new URL('./solverWorker.js', import.meta.url), { type: 'module' });
       workerRef.current = worker;
       worker.onmessage = event => {
+        if (event.data.type === 'progress') {
+          setSolveProgress(event.data.progress);
+          return;
+        }
         worker.terminate(); workerRef.current = null;
         if (event.data.ok) accept(event.data.result);
         else { setSolving(false); setError(`排課失敗：${event.data.error}`); }
@@ -81,7 +98,7 @@ export default function App() {
 
   const handleCancelSolve = useCallback(() => {
     workerRef.current?.terminate(); workerRef.current = null;
-    setSolving(false); setStatus('已取消排課。');
+    setSolving(false); setSolveProgress(null); setStatus('已取消排課。');
   }, []);
 
   // 調課
@@ -185,7 +202,7 @@ export default function App() {
       <BrandHeader />
       <main id="main" className="app">
         <section className="workspace-heading">
-          <div><p className="eyebrow">Schedule workspace · Version 10</p><h1>校務智慧排課工作區</h1><p>依序完成資料驗證、限制設定、排課、診斷與輸出。</p></div>
+          <div><p className="eyebrow">校務排課工作區</p><h1>校務智慧排課工作區</h1><p>依序完成資料驗證、限制設定、排課、診斷與輸出。</p></div>
           <button className="btn secondary" onClick={() => { setData(null); setSchedule(null); setValidation(null); setStatus(''); setError(''); setSelectedLesson(null); setLockMode(false); }}>
             ← 重新匯入
           </button>
@@ -220,17 +237,20 @@ export default function App() {
           </div>
           <button className="btn primary" onClick={handleSolve} disabled={validation?.errors.length > 0 || solving}>{solving ? '背景排課中…' : '執行智慧排課 →'}</button>
           {solving && <button className="btn secondary" onClick={handleCancelSolve}>取消排課</button>}
+          {solving && <SolveProgress progress={solveProgress} elapsedMs={solveElapsed} />}
         </section>
 
         {schedule && <>
           <section className="panel">
             <div className="panel-heading"><span>04</span><div><h2>排課結果</h2><p>{schedule.success ? '排課核心已完成計算，可進一步檢查與匯出。' : '仍有課程未能排入，請查看衝突診斷。'}</p></div></div>
-            <div className="result-stats"><div><strong>{schedule.schedule.length}</strong><span>已排入</span></div><div><strong>{schedule.pending?.length || 0}</strong><span>待處理</span></div><div><strong>{schedule.score ?? 0}</strong><span>品質指標</span></div><div><strong>{((schedule.elapsedMs || 0) / 1000).toFixed(1)}s</strong><span>運算耗時</span></div></div>
+            <div className="result-stats"><div><strong>{schedule.quality?.completionPercent ?? (schedule.success ? 100 : 0)}%</strong><span>排入完成率</span></div><div><strong>{schedule.quality?.hardConflicts ?? 0}</strong><span>硬性衝突</span></div><div><strong>{schedule.quality?.distributionScore ?? 100}</strong><span>課程分散度（滿分 100）</span></div><div><strong>{((schedule.elapsedMs || 0) / 1000).toFixed(1)}s</strong><span>運算耗時</span></div></div>
+            <details className="explain-card"><summary>品質指標如何計算？</summary><p><strong>排入完成率</strong>是已排入節數占全部需求節數；<strong>硬性衝突</strong>檢查班級、教師與專科教室是否同時重複；<strong>課程分散度</strong>會扣除同班同科集中在同一天的重複節數。100 分表示沒有這類重複，不代表已找到全球最佳課表。</p></details>
+            <details className="explain-card"><summary>系統使用什麼排課演算法？</summary><p>本系統使用<strong>限制滿足問題（CSP）</strong>搜尋：先排連堂、專科教室等較難課程，再用<strong>最少剩餘值（MRV）</strong>挑選可選時段最少的課程；遇到死路時以<strong>回溯搜尋</strong>撤回重試。時間到會保留目前找到的最佳無硬性衝突部分結果。這不是機器學習，也不保證全域最佳解。</p></details>
             {schedule.diagnostics?.map((item, i) => <div key={i} className="banner warn">{item.message}</div>)}
             <div className="row">
               <button className="btn" onClick={() => setStatus(schedule.success ? '排課成功，無硬性衝突。' : '尚有課程未排入，請檢視衝突診斷。')}>重新檢查結果</button>
               <button className="btn secondary" onClick={handleSave}>儲存本機版本</button>
-              <button className="btn" onClick={() => downloadExcel(schedule.schedule, { total: schedule.schedule.length, pending: schedule.pending?.length || 0, success: schedule.success, score: schedule.score })}>匯出 Excel</button>
+              <button className="btn" onClick={() => downloadExcel(schedule.schedule, { total: schedule.schedule.length, pending: schedule.pending?.length || 0, success: schedule.success, quality: schedule.quality })}>匯出 Excel</button>
               <button className="btn" onClick={() => downloadStaffingExcel(buildStaffingPlan(data))}>匯出教職員配置</button>
               <button className="btn" onClick={handleExportPdf}>匯出 PDF</button>
             </div>
@@ -260,6 +280,23 @@ export default function App() {
       <SiteFooter />
     </div>
   );
+}
+
+function SolveProgress({ progress, elapsedMs }) {
+  const placed = progress?.placed || 0;
+  const total = progress?.total || 0;
+  const percent = total ? Math.min(100, Math.round(placed / total * 100)) : 0;
+  return <div className="solve-progress" role="status" aria-live="polite">
+    <div className="solve-visual" aria-hidden="true">
+      {Array.from({ length: 15 }, (_, index) => <span key={index} style={{ '--delay': `${index * 55}ms` }} />)}
+    </div>
+    <div className="solve-copy">
+      <div className="solve-title"><strong>正在背景排課</strong><span>{(elapsedMs / 1000).toFixed(1)} 秒</span></div>
+      <p>系統持續嘗試符合教師、班級、教室與連堂限制的組合；頁面仍可正常顯示。</p>
+      <div className="progress-track" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>
+      <div className="solve-meta"><span>目前最佳方案：{placed} / {total || '—'} 節</span><span>搜尋 {progress?.nodes || 0} 個節點 · 回溯 {progress?.backtracks || 0} 次</span></div>
+    </div>
+  </div>;
 }
 
 function StaffingWorkspace({ data, status, error, onImport, onReset }) {

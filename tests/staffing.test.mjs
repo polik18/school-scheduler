@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as XLSX from 'xlsx';
 import { buildStaffingPlan, staffingPlanFromRows, validateStaffingPlan } from '../src/model/staffing.js';
-import { isStaffingWorkbook, readStaffingWorkbook } from '../src/importExcel.js';
+import { isStaffingWorkbook, readScheduleWorkbook, readStaffingWorkbook } from '../src/importExcel.js';
+import { scheduleRowsForExport } from '../src/exportExcel.js';
 
 test('可讀取三張教職員配置工作表', () => {
   const wb = XLSX.utils.book_new();
@@ -44,4 +45,36 @@ test('重複級任會提示但不丟失資料', () => {
   });
   assert.equal(plan.homeroom.length, 2);
   assert.equal(validateStaffingPlan(plan).warnings.length, 1);
+});
+
+test('中文工作表、中文欄位與中文值可匯入排課模型', () => {
+  const wb = XLSX.utils.book_new();
+  const append = (name, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['本列是說明'], ...rows
+  ]), name);
+  append('班級', [['班級代碼', '年級', '班級名稱', '學生數', '導師代碼'], ['101', '一年級', '1年1班', 30, 'T01']]);
+  append('教師', [['教師代碼', '姓名', '主要領域', '每日最多節數', '最多連續節數'], ['T01', '甲教師', '級任', 7, 4]]);
+  append('課程', [['班級代碼', '科目', '教師代碼', '每週節數', '教室類型', '是否連堂'], ['101', '國語', 'T01', 3, '普通教室', '否']]);
+  append('教師可排時段', [['教師代碼', '星期', '節次', '是否可排', '原因'], ['T01', '星期三', 8, '否', '會議']]);
+  append('教室', [['教室代碼', '教室類型', '容量'], ['R101', '普通教室', 35]]);
+  append('固定活動', [['活動名稱', '星期', '節次', '班級代碼', '教師代碼'], ['朝會', '星期一', 1, '101', '']]);
+
+  const input = readScheduleWorkbook(XLSX, wb);
+  assert.equal(input.classes[0].class_id, '101');
+  assert.equal(input.courses[0].room_required, 'normal');
+  assert.equal(input.courses[0].double_period, false);
+  assert.deepEqual(input.teachers[0].unavailable, [{ weekday: 'Wed', period: 8 }]);
+  assert.equal(input.fixedActivities[0].weekday, 'Mon');
+});
+
+test('匯出排課資料只使用繁體中文欄位與星期', () => {
+  const rows = scheduleRowsForExport([{
+    class: '101', subject: '國語', teacher: 'T01', day: 'Mon', period: 2,
+    room_id: 'R101', locked: true, manual: false, unit: 1, status: 'scheduled'
+  }]);
+  assert.deepEqual(Object.keys(rows[0]), ['班級', '科目', '教師', '星期', '節次', '教室', '是否鎖定', '是否人工調整']);
+  assert.equal(rows[0].星期, '星期一');
+  assert.equal(rows[0].是否鎖定, '是');
+  assert.equal(rows[0].是否人工調整, '否');
+  assert.equal('status' in rows[0], false);
 });
