@@ -4,7 +4,7 @@ import { mapLegacyInput } from '../src/model/schema.js';
 import { solveSchedule } from '../src/model/solver.js';
 import { validateInput } from '../src/importExcel.js';
 
-const file = new URL('../public/examples/large-school-schedule-demo.xlsx', import.meta.url);
+const file = new URL('../public/school-scheduler-template.xlsx', import.meta.url);
 const wb = XLSX.read(fs.readFileSync(file), { type: 'buffer' });
 const get = name => XLSX.utils.sheet_to_json(wb.Sheets[name], { range: 1, defval: '' });
 const input = mapLegacyInput({
@@ -13,9 +13,9 @@ const input = mapLegacyInput({
   fixed: get('FixedActivities'), staffAssignments: get('StaffAssignments')
 });
 
-if (input.classes.length !== 54) throw new Error(`範例班級應為 54，實際 ${input.classes.length}`);
-if (input.teachers.length !== 124) throw new Error(`範例教師應為 124，實際 ${input.teachers.length}`);
-if (input.courses.length !== 630) throw new Error(`範例課程列應為 630，實際 ${input.courses.length}`);
+if (input.classes.length !== 60) throw new Error(`標準範本班級應為 60，實際 ${input.classes.length}`);
+if (input.teachers.length !== 136) throw new Error(`標準範本教師應為 136，實際 ${input.teachers.length}`);
+if (input.courses.length !== 678) throw new Error(`標準範本課程列應為 678，實際 ${input.courses.length}`);
 const validation = validateInput(input);
 if (validation.errors.length) throw new Error(`範例驗證失敗：${validation.errors.join('；')}`);
 
@@ -24,7 +24,7 @@ const result = solveSchedule({
   days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], periodsPerDay: 8, timeoutMs: 30000
 });
 if (!result.success || result.pending.length) {
-  throw new Error(`大型範例排課失敗：success=${result.success}, pending=${result.pending.length}, timeout=${result.timedOut}`);
+  throw new Error(`標準範本排課失敗：success=${result.success}, pending=${result.pending.length}, timeout=${result.timedOut}`);
 }
 const seenClass = new Set(), seenTeacher = new Set(), seenRoom = new Set();
 for (const lesson of result.schedule) {
@@ -39,4 +39,5 @@ for (const lesson of result.schedule) {
     set.add(key);
   }
 }
-console.log(`大型範例 PASS：54 班、630 課程列、${result.schedule.length} 節、${result.elapsedMs}ms、0 pending`);
+if (result.schedule.length !== 924) throw new Error(`標準範本應排入 924 節，實際 ${result.schedule.length}`);
+console.log(`標準範本 PASS：60 班、678 課程列、${result.schedule.length} 節、${result.elapsedMs}ms、0 pending`);

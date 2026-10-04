@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { readSchoolExcel, validateInput } from './importExcel.js';
-import { createTemplate } from './template.js';
 import { solveSchedule } from './model/solver.js';
 import { diagnosePendingCourse } from './model/diagnosis.js';
 import { moveLesson } from './manual.js';
@@ -169,7 +168,7 @@ export default function App() {
       <div className="site-shell">
         <BrandHeader />
         <main id="main" className="landing-main">
-          <WelcomeScreen onImport={handleImport} onDownload={createTemplate} error={error} />
+          <WelcomeScreen onImport={handleImport} error={error} />
         </main>
         <SiteFooter />
       </div>
@@ -199,7 +198,7 @@ export default function App() {
           <div className="panel-heading"><span>01</span><div><h2>資料匯入</h2><p>更換 Excel 或重新下載標準範本。</p></div></div>
           <div className="row">
             <label className="btn file-input">上傳 Excel<input type="file" accept=".xlsx,.xls" onChange={(e) => e.target.files[0] && handleImport(e.target.files[0])} /></label>
-            <button className="btn" onClick={createTemplate}>下載範本</button>
+            <a className="btn" href="./school-scheduler-template.xlsx" download>下載標準範本</a>
           </div>
           <div className="data-summary" aria-label="匯入資料摘要"><div><strong>{data.teachers.length}</strong><span>位教師</span></div><div><strong>{data.classes.length}</strong><span>個班級</span></div><div><strong>{data.courses.length}</strong><span>筆課程</span></div></div>
         </section>
@@ -387,7 +386,7 @@ function VersionManager({ versions, onLoad, onDelete }) {
   );
 }
 
-function WelcomeScreen({ onImport, onDownload, error }) {
+function WelcomeScreen({ onImport, error }) {
   return (
     <>
       <section className="welcome-hero">
@@ -410,10 +409,9 @@ function WelcomeScreen({ onImport, onDownload, error }) {
           </ol>
           <div className="welcome-actions">
             <label className="btn primary file-input">匯入 Excel 開始排課<input type="file" accept=".xlsx,.xls" onChange={(e) => e.target.files[0] && onImport(e.target.files[0])} /></label>
-            <button className="btn inverse" onClick={onDownload}>先下載標準範本</button>
-            <a className="btn inverse" href="./examples/large-school-schedule-demo.xlsx" download>下載大型學校排課範例</a>
-            <a className="btn inverse" href="./examples/staffing-result-demo.xlsx" download>下載教職員配置結果範例</a>
+            <a className="btn inverse" href="./school-scheduler-template.xlsx" download>先下載標準範本</a>
           </div>
+          <p className="hint">標準範本內含 60 班可直接試跑資料；也可刪除範例列後填入本校資料，請保留英文欄位列。</p>
         </div>
       </section>
       <section className="feature-grid" aria-label="排課工具特色">

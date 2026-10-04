@@ -39,7 +39,7 @@
 
 另外，系統可自動辨識已有的教職員配置簿，工作表名為「級任導師」、「科任教師」、「行政與支援人員」即可。系統保留其資料關係，不要求原檔的色彩、合併儲存格或排版。
 
-首頁另提供可直接匯入的「大型學校排課範例」與「教職員配置結果範例」；資料來源、演示假設與界線見 [`docs/LARGE_SCHOOL_EXAMPLE.md`](docs/LARGE_SCHOOL_EXAMPLE.md)。
+首頁只提供一份 [`60 班標準範本`](docs/STANDARD_TEMPLATE.md)。範本可不修改直接試跑，也可刪除第 3 列起的範例後填入本校資料；請保留第 2 列英文欄位。
 
 ## 限制說明
 
@@ -66,7 +66,8 @@ npm run preview
 
 ```bash
 npm test              # 核心單元與 30 班效能測試
-npm run test:demo     # 54 班、846 節大型範例
+npm run test:template # 60 班、924 節標準範本
+npm run test:capacity # 72 班超時／部分結果壓力門禁
 npm run test:e2e      # Chrome 匯入、排課、取消與匯出流程
 npm run test:e2e:live # 對正式 GitHub Pages 執行同一流程
 ```
@@ -89,7 +90,8 @@ src/
   exportExcel.js    Excel 匯出
   manual.js         人工調課與衝突檢查
   storage.js        本機版本保存
-  template.js       下載的標準範本（中文三層結構＋範例）
+public/
+  school-scheduler-template.xlsx  唯一對外的 60 班標準範本
   style.css         樣式
 docs/IMPORT_GUIDE.md  Excel 匯入簡易說明
 ```

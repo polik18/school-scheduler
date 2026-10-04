@@ -3,8 +3,8 @@ import path from 'node:path';
 import * as XLSX from 'xlsx';
 
 const root = path.resolve(import.meta.dirname, '..');
-const source = path.resolve(process.argv[2] || path.join(root, 'public/examples/staffing-result-demo.xlsx'));
-const output = path.resolve(process.argv[3] || path.join(root, 'public/examples/large-school-schedule-demo.xlsx'));
+const source = path.resolve(process.argv[2] || path.join(root, 'tests/fixtures/source/staffing-source-neutral.xlsx'));
+const output = path.resolve(process.argv[3] || path.join(root, 'public/school-scheduler-template.xlsx'));
 
 const wb = XLSX.read(fs.readFileSync(source), { type: 'buffer' });
 const rows = name => XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '' }).slice(1);
@@ -64,6 +64,15 @@ const classes = homeroomRows.map((r, index) => {
   };
 });
 
+// 標準範本以每年級 10 班建立 60 班可直接試跑資料。
+for (let grade = 1; grade <= 6; grade++) {
+  classes.push({
+    class_id: classId(grade, 10), grade: ['','一年級','二年級','三年級','四年級','五年級','六年級'][grade],
+    class_name: `${grade}年10班`, students: 30,
+    homeroom_teacher: `H${String(54 + grade).padStart(3, '0')}`, note: '60 班標準範本擴充班'
+  });
+}
+
 const teachers = [];
 homeroomRows.forEach((r, index) => teachers.push({
   teacher_id: `H${String(index + 1).padStart(3, '0')}`, name: String(r[2]).trim(), subject: '級任',
@@ -74,8 +83,19 @@ subjectRows.forEach((r, index) => teachers.push({
   // 來源中有科任每週負責 36 個班級；範例以 8/8 避免人為造成無解。
   max_daily_period: 8, max_continuous_period: 8, identity_note: String(r[4] || '')
 }));
+for (let grade = 1; grade <= 6; grade++) teachers.push({
+  teacher_id: `H${String(54 + grade).padStart(3, '0')}`, name: `級任教師${String(54 + grade).padStart(3, '0')}`,
+  subject: '級任', max_daily_period: 7, max_continuous_period: 4, identity_note: '60 班範例擴充'
+});
+[
+  ['X001', '範例科任001', '英語'], ['X002', '範例科任002', '自然'],
+  ['X003', '範例科任003', '體育'], ['X004', '範例科任004', '音樂'],
+  ['X005', '範例科任005', '資訊'], ['X006', '範例科任006', '本土語']
+].forEach(([teacher_id, name, subject]) => teachers.push({
+  teacher_id, name, subject, max_daily_period: 8, max_continuous_period: 4, identity_note: '60 班跨班科任範例'
+}));
 
-// 這份人員簿沒有每週節數：大型排課範例以保守的演示節數補齊，不宣稱為實校課程計畫。
+// 來源沒有每週節數：標準範本以保守的演示節數補齊，不宣稱為實校課程計畫。
 const courses = [];
 const mappingReport = [];
 classes.forEach(c => {
@@ -100,13 +120,39 @@ subjectRows.forEach((r, index) => {
   });
 });
 
+for (let grade = 1; grade <= 6; grade++) {
+  const cls = classId(grade, 10);
+  const add = (subject, teacher, weekly_period = 1, room_required = 'normal', double_period = false) =>
+    courses.push({ class: cls, subject, teacher, weekly_period, room_required, double_period });
+  add('英語', 'X001');
+  add('自然', 'X002', 2, '實驗教室', true);
+  add('體育', 'X003', 1, '體育場');
+  add('音樂', 'X004', 1, '音樂教室');
+  add('資訊', 'X005', 1, '電腦教室');
+  add('本土語', 'X006');
+}
+
 const rooms = classes.map(c => ({ room_id: `R${c.class_id}`, type: 'normal', capacity: 35 }));
+rooms.push(
+  { room_id: 'LAB01', type: '實驗教室', capacity: 35 },
+  { room_id: 'GYM01', type: '體育場', capacity: 60 },
+  { room_id: 'MUSIC01', type: '音樂教室', capacity: 35 },
+  { room_id: 'PC01', type: '電腦教室', capacity: 35 }
+);
 const availability = [
   { teacher: 'H001', weekday: 'Wed', period: 8, available: false, reason: '範例：行政會議' },
   { teacher: 'S001', weekday: 'Mon', period: 1, available: false, reason: '範例：領域會議' }
 ];
 const fixed = classes.map(c => ({ activity: '範例：全校集會', weekday: 'Mon', period: 1, class: c.class_id, teacher: '' }));
-const staffAssignments = adminRows.map(r => ({ department: r[0], job_title: r[1], teacher: '', name: r[2], note: '' }));
+const idsByName = new Map();
+teachers.forEach(t => {
+  if (!idsByName.has(t.name)) idsByName.set(t.name, t.teacher_id);
+  else idsByName.set(t.name, null);
+});
+const staffAssignments = adminRows.map(r => {
+  const id = idsByName.get(String(r[2]).trim());
+  return { department: r[0], job_title: r[1], teacher: id || '', name: id ? '' : r[2], note: '' };
+});
 
 const out = XLSX.utils.book_new();
 const add = (name, headers, values, note) => {
@@ -114,11 +160,11 @@ const add = (name, headers, values, note) => {
   XLSX.utils.book_append_sheet(out, XLSX.utils.aoa_to_sheet(data), name);
 };
 add('Classes', ['class_id', 'grade', 'class_name', 'students', 'homeroom_teacher', 'note'], classes,
-  '大型學校範例：由匿名化教職員配置簿整理；學生數為演示值。');
+  '標準範本：第 3 列起皆為可刪除的 60 班範例資料；請保留第 2 列英文欄位名。');
 add('Teachers', ['teacher_id', 'name', 'subject', 'max_daily_period', 'max_continuous_period', 'identity_note'], teachers,
-  '大型學校範例：人名已遮蔽，ID 為範例編號。');
+  '標準範本：第 3 列起皆為可刪除的中性範例人員；請保留第 2 列英文欄位名。');
 add('Courses', ['class', 'subject', 'teacher', 'weekly_period', 'room_required', 'double_period'], courses,
-  '範例假設：人員簿未提供節數；專科每班 1 節，級任國語與數學各 3 節，請使用者依實際課程計畫修改。');
+  '可刪除範例：專科每班 1 節，級任國語與數學各 3 節；正式排課請依本校課程計畫修改，並保留第 2 列欄位名。');
 add('TeacherAvailability', ['teacher', 'weekday', 'period', 'available', 'reason'], availability,
   '僅供演示教師不可排時段。');
 add('Rooms', ['room_id', 'type', 'capacity'], rooms, '範例以各班普通教室為主。');
@@ -128,8 +174,10 @@ add('StaffAssignments', ['department', 'job_title', 'teacher', 'name', 'note'], 
 
 fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, XLSX.write(out, { type: 'buffer', bookType: 'xlsx' }));
-fs.writeFileSync(path.join(path.dirname(output), 'large-school-example-report.json'), JSON.stringify({
-  source: 'staffing-result-demo.xlsx',
+const reportPath = path.join(root, 'tests/fixtures/generated/standard-template-report.json');
+fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+fs.writeFileSync(reportPath, JSON.stringify({
+  source: 'staffing-source-neutral.xlsx',
   assumptions: {
     specialist_weekly_period: 1, homeroom_language_weekly_period: 3,
     homeroom_math_weekly_period: 3, students_per_class: 30,

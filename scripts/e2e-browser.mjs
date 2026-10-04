@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 import { preview } from 'vite';
@@ -32,24 +33,32 @@ function assert(condition, message) {
 }
 
 try {
-  const scheduleFile = path.join(root, 'public/examples/large-school-schedule-demo.xlsx');
-  const staffingFile = path.join(root, 'public/examples/staffing-result-demo.xlsx');
+  const staffingFile = path.join(root, 'tests/fixtures/source/staffing-source-neutral.xlsx');
 
-  // 主流程：大型範例匯入 → 驗證 → Web Worker 排課 → 匯出。
+  // 主流程：下載標準範本 → 匯入 → 驗證 → Web Worker 排課 → 匯出。
   const page = await context.newPage();
   observe(page);
   await page.goto(baseURL, { waitUntil: 'networkidle' });
   assert(await page.getByRole('heading', { name: /\u628a\u8907\u96dc\u7684\u6392\u8ab2\u9650\u5236/ }).isVisible(), '首頁標題未顯示');
-  const demoHref = await page.getByRole('link', { name: '下載大型學校排課範例' }).getAttribute('href');
-  assert(demoHref?.includes('large-school-schedule-demo.xlsx'), '大型範例下載連結錯誤');
+  const templateLinks = page.getByRole('link', { name: /\u4e0b\u8f09\u6a19\u6e96\u7bc4\u672c/ });
+  assert(await templateLinks.count() === 1, '首頁應只有一個標準範本下載入口');
+  const demoHref = await templateLinks.first().getAttribute('href');
+  assert(demoHref?.includes('school-scheduler-template.xlsx'), '標準範本下載連結錯誤');
+  const [templateDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    templateLinks.first().click()
+  ]);
+  assert(templateDownload.suggestedFilename() === 'school-scheduler-template.xlsx', '標準範本檔名錯誤');
+  const scheduleFile = path.join(os.tmpdir(), `school-scheduler-template-${process.pid}.xlsx`);
+  await templateDownload.saveAs(scheduleFile);
   await page.locator('input[type=file]').first().setInputFiles(scheduleFile);
-  await page.getByRole('status').filter({ hasText: '匯入完成：124 師 / 54 班 / 630 課' }).waitFor({ timeout: 15000 });
-  assert(await page.getByText('資料格式與必要欄位均已通過驗證。').isVisible(), '大型範例未通過驗證');
+  await page.getByRole('status').filter({ hasText: '匯入完成：136 師 / 60 班 / 678 課' }).waitFor({ timeout: 15000 });
+  assert(await page.getByText('資料格式與必要欄位均已通過驗證。').isVisible(), '標準範本未通過驗證');
   await page.getByRole('button', { name: '執行智慧排課 →' }).click();
   await page.getByRole('button', { name: '取消排課' }).waitFor({ timeout: 5000 });
   await page.getByRole('status').filter({ hasText: '排課成功' }).waitFor({ timeout: 45000 });
   const stats = await page.locator('.result-stats > div').allTextContents();
-  assert(stats.some(x => x.includes('846') && x.includes('已排入')), `已排節數不是 846：${stats.join(' | ')}`);
+  assert(stats.some(x => x.includes('924') && x.includes('已排入')), `已排節數不是 924：${stats.join(' | ')}`);
   assert(stats.some(x => x.includes('0') && x.includes('待處理')), `待處理不是 0：${stats.join(' | ')}`);
   const [staffingDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -84,7 +93,7 @@ try {
   assert((await roundTripDownload.suggestedFilename()) === 'school-staffing-result.xlsx', '配置簿再匯出失敗');
 
   assert(errors.length === 0, `瀏覽器錯誤：\n${errors.join('\n')}`);
-  console.log(`Browser E2E PASS：大型範例 846 節、0 pending；取消可用；配置簿 66/70/40；兩種匯出可用。`);
+  console.log(`Browser E2E PASS：標準範本 60 班、924 節、0 pending；取消可用；配置簿 66/70/40；兩種匯出可用。`);
 } finally {
   await context.close();
   await browser.close();
