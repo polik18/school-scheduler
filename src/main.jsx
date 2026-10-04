@@ -208,6 +208,8 @@ export default function App() {
           </button>
         </section>
 
+        <WorkflowSteps validation={validation} solving={solving} schedule={schedule} />
+
         {status && <div className="banner info" role="status">{status}</div>}
         {error && <div className="banner error" role="alert">{error}</div>}
 
@@ -299,6 +301,20 @@ function SolveProgress({ progress, elapsedMs }) {
   </div>;
 }
 
+function WorkflowSteps({ validation, solving, schedule }) {
+  const current = schedule ? 4 : solving ? 3 : validation?.errors?.length ? 2 : validation ? 3 : 1;
+  const steps = ['資料匯入', '格式驗證', '背景排課', '檢查與匯出'];
+  return <ol className="workflow-steps" aria-label="排課工作進度">
+    {steps.map((label, index) => {
+      const number = index + 1;
+      const state = number < current ? 'done' : number === current ? 'current' : '';
+      return <li key={label} className={state} aria-current={state === 'current' ? 'step' : undefined}>
+        <span>{number < current ? '✓' : number}</span><strong>{label}</strong>
+      </li>;
+    })}
+  </ol>;
+}
+
 function StaffingWorkspace({ data, status, error, onImport, onReset }) {
   const plan = data.staffingPlan;
   const validation = data.staffingValidation || { errors: [], warnings: [] };
@@ -350,27 +366,43 @@ function escapeHtml(value) {
 }
 
 function ViewTab({ view, schedule, settings, lockMode, selectedLesson, onCellClick }) {
-  const classIds = [...new Set(schedule.schedule.map(c => c.class))];
-  const teacherIds = [...new Set(schedule.schedule.map(c => c.teacher))];
-  const roomIds = [...new Set(schedule.schedule.map(c => c.room_id).filter(Boolean))];
+  const [selection, setSelection] = useState({ class: '', teacher: '', room: '' });
+  const [query, setQuery] = useState('');
+  useEffect(() => setQuery(''), [view]);
+  const config = {
+    class: { field: 'class', label: '班級', values: [...new Set(schedule.schedule.map(c => c.class))] },
+    teacher: { field: 'teacher', label: '教師', values: [...new Set(schedule.schedule.map(c => c.teacher))] },
+    room: { field: 'room_id', label: '教室', values: [...new Set(schedule.schedule.map(c => c.room_id).filter(Boolean))] }
+  }[view];
+  const values = config.values.sort((a, b) => String(a).localeCompare(String(b), 'zh-Hant'));
+  const selected = values.includes(selection[view]) ? selection[view] : values[0];
+  const filtered = values.filter(value => String(value).toLowerCase().includes(query.trim().toLowerCase()));
+  const selectValue = filtered.includes(selected) ? selected : (filtered[0] || '');
+  const lessons = schedule.schedule.filter(course => course[config.field] === selectValue);
+  const subjects = [...new Set(lessons.map(course => course.subject))];
 
-  return (
-    <div className="timetable-list">
-      {view === 'class' && classIds.map(cls => (
-        <TimetableGrid key={cls} title={`班級 ${cls}`} schedule={schedule} settings={settings}
-          lockMode={lockMode} selectedLesson={selectedLesson} filterField="class" filterValue={cls} onCellClick={onCellClick} />
-      ))}
-      {view === 'teacher' && teacherIds.map(tid => (
-        <TimetableGrid key={tid} title={`教師 ${tid}`} schedule={schedule} settings={settings}
-          lockMode={lockMode} selectedLesson={selectedLesson} filterField="teacher" filterValue={tid} onCellClick={onCellClick} />
-      ))}
-      {view === 'room' && roomIds.map(rid => (
-        <TimetableGrid key={rid} title={`教室 ${rid}`} schedule={schedule} settings={settings}
-          lockMode={lockMode} selectedLesson={selectedLesson} filterField="room_id" filterValue={rid} onCellClick={onCellClick} />
-      ))}
-      {view === 'room' && roomIds.length === 0 && <div className="empty-state">目前沒有專用教室排課資料。</div>}
+  if (!values.length) return <div className="empty-state">目前沒有{config.label}排課資料。</div>;
+  return <div className="timetable-browser">
+    <div className="entity-toolbar">
+      <div className="entity-picker">
+        <label>搜尋{config.label}<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={`輸入${config.label}代碼`} /></label>
+        <label>目前檢視<select value={selectValue} onChange={event => setSelection(current => ({ ...current, [view]: event.target.value }))}>
+          {filtered.map(value => <option key={value} value={value}>{config.label} {value}</option>)}
+        </select></label>
+      </div>
+      <div className="entity-summary" aria-label="目前課表摘要"><div><strong>{lessons.length}</strong><span>節課</span></div><div><strong>{subjects.length}</strong><span>個科目</span></div><div><strong>0</strong><span>時段衝突</span></div></div>
     </div>
-  );
+    {filtered.length === 0 ? <div className="empty-state">找不到符合「{query}」的{config.label}。</div> : <>
+      <div className="subject-legend" aria-label="科目圖例">{subjects.map(subject => <span key={subject} style={subjectColor(subject)}><i />{subject}</span>)}</div>
+      <TimetableGrid title={`${config.label} ${selectValue}`} schedule={schedule} settings={settings}
+        lockMode={lockMode} selectedLesson={selectedLesson} filterField={config.field} filterValue={selectValue} onCellClick={onCellClick} />
+    </>}
+  </div>;
+}
+
+function subjectColor(subject) {
+  const hue = [...String(subject)].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) % 360, 0);
+  return { '--subject-hue': hue };
 }
 
 function TimetableGrid({ title, schedule, settings, lockMode, selectedLesson, filterField, filterValue, onCellClick }) {
@@ -390,10 +422,10 @@ function TimetableGrid({ title, schedule, settings, lockMode, selectedLesson, fi
                 {DAYS.slice(0, settings.days.length).map(d => {
                   const cell = schedule.schedule.find(c => c[filterField] === filterValue && c.day === d && c.period === period);
                   const index = cell ? schedule.schedule.indexOf(cell) : null;
-                  const cellClass = [lockMode ? (cell ? 'editable' : 'drop-target') : '', index === selectedLesson ? 'selected' : ''].filter(Boolean).join(' ');
+                  const cellClass = [lockMode ? (cell ? 'editable' : 'drop-target') : '', index !== null && index === selectedLesson ? 'selected' : ''].filter(Boolean).join(' ');
                   return (
                     <td key={d} className={cellClass} onClick={() => lockMode && onCellClick(index, { day: d, period })}>
-                      {cell ? <><strong>{cell.subject}</strong><small>{cell.teacher}{cell.room_id ? ` · ${cell.room_id}` : ''}</small></> : lockMode && selectedLesson !== null ? <span className="empty-hint">移至這裡</span> : null}
+                      {cell ? <div className="lesson-card" style={subjectColor(cell.subject)}><strong>{cell.subject}</strong><small>{filterField !== 'class' ? `班級 ${cell.class}` : `教師 ${cell.teacher}`}{cell.room_id ? ` · ${cell.room_id}` : ''}</small></div> : lockMode && selectedLesson !== null ? <span className="empty-hint">移至這裡</span> : null}
                     </td>
                   );
                 })}
@@ -428,14 +460,14 @@ function WelcomeScreen({ onImport, error }) {
     <>
       <section className="welcome-hero">
         <div className="welcome-copy">
-          <p className="eyebrow">Polik Projects · School Operations</p>
+          <p className="eyebrow">台灣學校排課工具</p>
           <div className="badge-row"><span className="badge">瀏覽器本機運算</span><span className="badge warm">Excel 工作流程</span></div>
           <h1>把複雜的排課限制，<em>整理成一張能執行的課表。</em></h1>
           <p>從教師、班級、課程與教室資料開始，自動檢查必要欄位、安排時段、診斷衝突，最後再由教學組人工微調與輸出。</p>
           <div className="privacy-note"><strong>資料留在目前瀏覽器</strong><span>Excel 內容不需要上傳到應用程式伺服器；本機版本也只存於這台裝置的瀏覽器。</span></div>
         </div>
         <div className="welcome-card">
-          <div className="welcome-card-label">Start scheduling</div>
+          <div className="welcome-card-label">快速開始</div>
           <h2>四個步驟，建立第一版課表</h2>
           {error && <div className="banner error" role="alert">{error}</div>}
           <ol className="welcome-steps">
@@ -448,13 +480,13 @@ function WelcomeScreen({ onImport, error }) {
             <label className="btn primary file-input">匯入 Excel 開始排課<input type="file" accept=".xlsx,.xls" onChange={(e) => e.target.files[0] && onImport(e.target.files[0])} /></label>
             <a className="btn inverse" href="./school-scheduler-template.xlsx" download>先下載標準範本</a>
           </div>
-          <p className="hint">標準範本內含 60 班可直接試跑資料；也可刪除範例列後填入本校資料，請保留英文欄位列。</p>
+          <p className="hint">標準範本內含 60 班可直接試跑資料；也可刪除範例列後填入本校資料，請保留中文欄位列。</p>
         </div>
       </section>
       <section className="feature-grid" aria-label="排課工具特色">
-        <article><span>VALIDATE</span><h2>匯入先驗證</h2><p>將教師、班級、課程、教室及不可排時段整理成一致資料，再開始計算。</p></article>
-        <article><span>SOLVE</span><h2>限制一起算</h2><p>同時考慮班級、教師、教室、固定活動與每日節數，降低人工反覆對照。</p></article>
-        <article><span>ADJUST</span><h2>結果能微調</h2><p>依班級、教師或教室檢視課表，人工移動時即時阻擋基本時段衝突。</p></article>
+        <article><span>資料驗證</span><h2>匯入先驗證</h2><p>將教師、班級、課程、教室及不可排時段整理成一致資料，再開始計算。</p></article>
+        <article><span>限制求解</span><h2>限制一起算</h2><p>同時考慮班級、教師、教室、固定活動與每日節數，降低人工反覆對照。</p></article>
+        <article><span>人工調整</span><h2>結果能微調</h2><p>依班級、教師或教室檢視課表，人工移動時即時阻擋基本時段衝突。</p></article>
       </section>
     </>
   );

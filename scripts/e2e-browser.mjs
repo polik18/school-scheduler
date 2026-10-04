@@ -61,6 +61,11 @@ try {
   const stats = await page.locator('.result-stats > div').allTextContents();
   assert(stats.some(x => x.includes('100%') && x.includes('排入完成率')), `完成率不是 100%：${stats.join(' | ')}`);
   assert(stats.some(x => x.includes('0') && x.includes('硬性衝突')), `硬性衝突不是 0：${stats.join(' | ')}`);
+  assert(await page.locator('.timetable-card').count() === 1, '課表結果應預設只渲染一個班級');
+  assert(await page.locator('.timetable td.selected').count() === 0, '尚未人工選課時不應標示空白格');
+  await page.getByRole('searchbox', { name: '搜尋班級' }).fill('110');
+  await page.getByRole('heading', { name: '班級 110' }).waitFor();
+  assert(await page.locator('.timetable-card').count() === 1, '搜尋後仍應只渲染一張課表');
   const [staffingDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '匯出教職員配置' }).click()
