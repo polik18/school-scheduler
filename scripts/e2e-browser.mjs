@@ -31,6 +31,13 @@ function observe(page) {
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
+async function dismissGuide(page) {
+  const dialog = page.getByRole('dialog', { name: '排課工具使用說明' });
+  if (await dialog.count() && await dialog.isVisible()) {
+    assert(await dialog.getByRole('heading', { name: '下載標準範本' }).isVisible(), '首次使用導覽內容未顯示');
+    await dialog.getByRole('button', { name: '開始使用' }).click();
+  }
+}
 
 try {
   const staffingFile = path.join(root, 'tests/fixtures/source/staffing-source-neutral.xlsx');
@@ -39,7 +46,12 @@ try {
   const page = await context.newPage();
   observe(page);
   await page.goto(baseURL, { waitUntil: 'networkidle' });
+  await dismissGuide(page);
   assert(await page.getByRole('heading', { name: /\u628a\u8907\u96dc\u7684\u6392\u8ab2\u9650\u5236/ }).isVisible(), '首頁標題未顯示');
+  await page.getByRole('button', { name: '使用說明' }).click();
+  await page.getByRole('button', { name: 'Excel 欄位' }).click();
+  assert(await page.getByRole('cell', { name: '教師可排時段' }).isVisible(), 'Excel 欄位說明未顯示');
+  await page.getByRole('button', { name: '關閉使用說明' }).click();
   const templateLinks = page.getByRole('link', { name: /\u4e0b\u8f09\u6a19\u6e96\u7bc4\u672c/ });
   assert(await templateLinks.count() === 1, '首頁應只有一個標準範本下載入口');
   const demoHref = await templateLinks.first().getAttribute('href');
@@ -76,6 +88,7 @@ try {
   const cancelPage = await context.newPage();
   observe(cancelPage);
   await cancelPage.goto(baseURL);
+  await dismissGuide(cancelPage);
   await cancelPage.locator('input[type=file]').first().setInputFiles(scheduleFile);
   await cancelPage.getByRole('status').filter({ hasText: '匯入完成' }).waitFor();
   await cancelPage.getByRole('button', { name: '執行智慧排課 →' }).click();
@@ -86,6 +99,7 @@ try {
   const staffingPage = await context.newPage();
   observe(staffingPage);
   await staffingPage.goto(baseURL);
+  await dismissGuide(staffingPage);
   await staffingPage.locator('input[type=file]').first().setInputFiles(staffingFile);
   await staffingPage.getByRole('heading', { name: '教職員配置結果' }).waitFor({ timeout: 15000 });
   const staffingStats = await staffingPage.locator('.data-summary > div').allTextContents();

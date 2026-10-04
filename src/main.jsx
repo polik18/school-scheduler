@@ -14,6 +14,9 @@ const DAY_LABELS = { Mon: '一', Tue: '二', Wed: '三', Thu: '四', Fri: '五',
 const VIEW_LABELS = { class: '班級課表', teacher: '教師課表', room: '教室使用' };
 
 export default function App() {
+  const [helpOpen, setHelpOpen] = useState(() => {
+    try { return localStorage.getItem('polik-scheduler-guide-seen') !== '1'; } catch { return true; }
+  });
   const [data, setData] = useState(null);      // 匯入的標準資料
   const [validation, setValidation] = useState(null);
   const [schedule, setSchedule] = useState(null);
@@ -34,6 +37,11 @@ export default function App() {
     const timer = setInterval(() => setSolveElapsed(Date.now() - solveStartedAt.current), 250);
     return () => clearInterval(timer);
   }, [solving]);
+
+  const closeHelp = useCallback(() => {
+    try { localStorage.setItem('polik-scheduler-guide-seen', '1'); } catch { /* 無痕模式仍可關閉本次導覽 */ }
+    setHelpOpen(false);
+  }, []);
 
   // 匯入檔案
   const handleImport = useCallback(async (file) => {
@@ -183,23 +191,24 @@ export default function App() {
   if (!data) {
     return (
       <div className="site-shell">
-        <BrandHeader />
+        <BrandHeader onOpenHelp={() => setHelpOpen(true)} />
         <main id="main" className="landing-main">
           <WelcomeScreen onImport={handleImport} error={error} />
         </main>
         <SiteFooter />
+        {helpOpen && <HelpCenter onClose={closeHelp} />}
       </div>
     );
   }
 
   if (data.kind === 'staffing') {
-    return <StaffingWorkspace data={data} status={status} error={error} onImport={handleImport}
+    return <StaffingWorkspace data={data} status={status} error={error} onImport={handleImport} onOpenHelp={() => setHelpOpen(true)} helpOpen={helpOpen} onCloseHelp={closeHelp}
       onReset={() => { setData(null); setStatus(''); setError(''); }} />;
   }
 
   return (
     <div className="site-shell">
-      <BrandHeader />
+      <BrandHeader onOpenHelp={() => setHelpOpen(true)} />
       <main id="main" className="app">
         <section className="workspace-heading">
           <div><p className="eyebrow">校務排課工作區</p><h1>校務智慧排課工作區</h1><p>依序完成資料驗證、限制設定、排課、診斷與輸出。</p></div>
@@ -234,8 +243,8 @@ export default function App() {
         <section className="panel">
           <div className="panel-heading"><span>03</span><div><h2>排課設定</h2><p>決定每週上課天數與每日節數。</p></div></div>
           <div className="settings-grid">
-            <label>每週上課天數<select value={settings.days.length} onChange={(e) => setSettings(s => ({ ...s, days: DAYS.slice(0, Number(e.target.value)) }))}><option value="5">5 天（週一至週五）</option><option value="6">6 天（週一至週六）</option></select></label>
-            <label>每日節數<select value={settings.periodsPerDay} onChange={(e) => setSettings(s => ({ ...s, periodsPerDay: Number(e.target.value) }))}><option value="6">6 節</option><option value="7">7 節</option><option value="8">8 節</option></select></label>
+            <label>每週上課天數<select value={settings.days.length} onChange={(e) => setSettings(s => ({ ...s, days: DAYS.slice(0, Number(e.target.value)) }))}><option value="5">5 天（週一至週五）</option><option value="6">6 天（週一至週六）</option></select><small className="field-help">決定排課核心可以使用星期一至星期五或星期六。</small></label>
+            <label>每日節數<select value={settings.periodsPerDay} onChange={(e) => setSettings(s => ({ ...s, periodsPerDay: Number(e.target.value) }))}><option value="6">6 節</option><option value="7">7 節</option><option value="8">8 節</option></select><small className="field-help">會影響每天可使用的時段總數與課表高度。</small></label>
           </div>
           <button className="btn primary" onClick={handleSolve} disabled={validation?.errors.length > 0 || solving}>{solving ? '背景排課中…' : '執行智慧排課 →'}</button>
           {solving && <button className="btn secondary" onClick={handleCancelSolve}>取消排課</button>}
@@ -280,6 +289,7 @@ export default function App() {
         </>}
       </main>
       <SiteFooter />
+      {helpOpen && <HelpCenter onClose={closeHelp} />}
     </div>
   );
 }
@@ -315,12 +325,12 @@ function WorkflowSteps({ validation, solving, schedule }) {
   </ol>;
 }
 
-function StaffingWorkspace({ data, status, error, onImport, onReset }) {
+function StaffingWorkspace({ data, status, error, onImport, onReset, onOpenHelp, helpOpen, onCloseHelp }) {
   const plan = data.staffingPlan;
   const validation = data.staffingValidation || { errors: [], warnings: [] };
   return (
     <div className="site-shell">
-      <BrandHeader />
+      <BrandHeader onOpenHelp={onOpenHelp} />
       <main id="main" className="app">
         <section className="workspace-heading"><div><p className="eyebrow">Staffing workspace</p><h1>教職員配置結果</h1><p>保留級任、科任與行政支援的資料關係，不依賴原 Excel 排版。</p></div><button className="btn secondary" onClick={onReset}>← 回首頁</button></section>
         {status && <div className="banner info" role="status">{status}</div>}
@@ -334,7 +344,7 @@ function StaffingWorkspace({ data, status, error, onImport, onReset }) {
         <StaffingTable title="級任導師" headers={['年級','班級','導師','備註']} rows={plan.homeroom.map(x => [x.grade,x.class_name || x.class_id,x.teacher_name || x.teacher_id,x.note])} />
         <StaffingTable title="科任教師" headers={['教師','領域／科目','任教年級與班級','備註']} rows={plan.subjectTeachers.map(x => [x.teacher_name || x.teacher_id,(x.subjects || []).join('、'),x.assignment_text || '',x.note])} />
         <StaffingTable title="行政與支援人員" headers={['處室／單位','職稱','姓名','備註']} rows={plan.administration.map(x => [x.department,x.job_title,x.name || x.teacher_id,x.note])} />
-      </main><SiteFooter />
+      </main><SiteFooter />{helpOpen && <HelpCenter onClose={onCloseHelp} />}
     </div>
   );
 }
@@ -492,14 +502,69 @@ function WelcomeScreen({ onImport, error }) {
   );
 }
 
-function BrandHeader() {
+function HelpCenter({ onClose }) {
+  const [tab, setTab] = useState('quick');
+  const closeRef = useRef(null);
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+    const onKey = event => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', onKey); };
+  }, [onClose]);
+  const tabs = [['quick','快速上手'], ['excel','Excel 欄位'], ['rules','限制與指標'], ['errors','常見問題']];
+  return <div className="help-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+    <section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <header className="help-header"><div><p className="eyebrow">使用教學</p><h2 id="help-title">排課工具使用說明</h2><p>從標準範本到結果檢查，所有資料都在目前瀏覽器處理。</p></div><button ref={closeRef} className="help-close" onClick={onClose} aria-label="關閉使用說明">×</button></header>
+      <nav className="help-tabs" aria-label="使用說明章節">{tabs.map(([value,label]) => <button key={value} className={tab === value ? 'active' : ''} aria-pressed={tab === value} onClick={() => setTab(value)}>{label}</button>)}</nav>
+      <div className="help-content">
+        {tab === 'quick' && <div className="guide-steps">
+          <article><span>1</span><div><h3>下載標準範本</h3><p>先用內建 60 班資料試跑；確認流程後，再從第 3 列起刪除或替換成貴校資料。工作表名稱與第 2 列中文欄位請保留。</p></div></article>
+          <article><span>2</span><div><h3>修改並匯入 Excel</h3><p>班級、教師、課程與教室代碼必須互相一致。匯入後先修正紅色錯誤；黃色訊息通常是提醒，不一定會阻止排課。</p></div></article>
+          <article><span>3</span><div><h3>設定並執行排課</h3><p>選擇每週天數與每日節數後開始排課。進度卡顯示真實最佳節數、搜尋節點與回溯次數；大型資料可隨時取消。</p></div></article>
+          <article><span>4</span><div><h3>檢查、微調與匯出</h3><p>完成率應為 100%、硬性衝突應為 0。可依班級、教師或教室檢視，開啟人工調課後先選課程，再選空白時段。</p></div></article>
+          <div className="help-callout"><strong>建議做法</strong><p>第一次請不要立刻清空範本。先確認範例能成功排課，再分批替換班級、教師、課程與限制，較容易找出是哪一批資料造成無解。</p></div>
+        </div>}
+        {tab === 'excel' && <div>
+          <h3>標準範本工作表</h3><p className="help-lead">第一列是填寫說明、第二列是欄位名稱、第三列起才是資料。欄位支援繁體中文，舊版英文欄位仍可匯入。</p>
+          <div className="help-table-wrap"><table className="help-table"><thead><tr><th>工作表</th><th>必要／常用欄位</th><th>用途</th></tr></thead><tbody>
+            <tr><td>班級</td><td>班級代碼、年級、班級名稱、學生數、導師代碼</td><td>建立班級與導師關係</td></tr>
+            <tr><td>教師</td><td>教師代碼、姓名、主要領域、每日最多節數、最多連續節數</td><td>建立教師與授課上限</td></tr>
+            <tr><td>課程</td><td>班級代碼、科目、教師代碼、每週節數、教室類型、是否連堂</td><td>每一列代表一組授課需求</td></tr>
+            <tr><td>教師可排時段</td><td>教師代碼、星期、節次、是否可排、原因</td><td>填「否」表示該時段不可排</td></tr>
+            <tr><td>教室</td><td>教室代碼、教室類型、容量</td><td>專科教室類型需與課程一致</td></tr>
+            <tr><td>固定活動</td><td>活動名稱、星期、節次、班級代碼、教師代碼</td><td>預先占用班級或教師時段</td></tr>
+            <tr><td>行政職務</td><td>處室／單位、職稱、教師代碼、姓名、備註</td><td>保留人員配置資訊</td></tr>
+          </tbody></table></div>
+          <div className="help-callout"><strong>值的寫法</strong><p>星期請填「星期一」至「星期六」；是非欄位填「是／否」；一般教室填「普通教室」，不限制教室可填「不限教室」。</p></div>
+        </div>}
+        {tab === 'rules' && <div className="help-sections">
+          <section><h3>系統會阻止哪些衝突？</h3><ul><li>同一班級、教師或專科教室在同一時段重複。</li><li>排入教師不可排時段、超過每日節數或最多連續節數。</li><li>連堂課被拆開，或固定活動已占用該時段。</li><li>課程要求的專科教室不存在或已被占用。</li></ul></section>
+          <section><h3>演算法</h3><p>系統把排課建模為限制滿足問題（CSP），先安排較難課程，再以最少剩餘值（MRV）選擇候選最少的任務；遇到死路就回溯重試。它不是生成式 AI，也不保證全域最佳解。</p></section>
+          <section><h3>三個品質數字</h3><ul><li><strong>排入完成率：</strong>已排入節數占全部需求節數。</li><li><strong>硬性衝突：</strong>班級、教師、教室或鎖定資料的衝突總數，成功結果應為 0。</li><li><strong>課程分散度：</strong>同班同科集中於同一天會扣分；100 分只代表沒有這類重複。</li></ul></section>
+        </div>}
+        {tab === 'errors' && <div className="help-sections">
+          <section><h3>教師不存在</h3><p>課程表的「教師代碼」找不到對應教師。請將代碼改成教師工作表已有的代碼，或先新增該教師。</p></section>
+          <section><h3>班級不存在</h3><p>課程表的「班級代碼」不在班級工作表。請檢查全形空白、前導零與代碼拼法是否完全一致。</p></section>
+          <section><h3>找不到專科教室</h3><p>課程要求的「教室類型」沒有對應教室。請在教室工作表新增同類型教室，或修正課程的教室類型。</p></section>
+          <section><h3>限制過緊或排課逾時</h3><p>先查看未排入課程，再逐步放寬教師不可排時段、每日上限、固定活動或專科教室數量。逾時結果仍會保留目前最佳且無基本時段衝突的部分課表。</p></section>
+          <section><h3>資料與隱私</h3><p>Excel 在瀏覽器本機解析；網站不需要把內容上傳到應用程式伺服器。本機版本使用瀏覽器儲存空間，更換裝置或清除網站資料後不會保留。</p></section>
+        </div>}
+      </div>
+      <footer className="help-footer"><span>按 Esc 也可以關閉；之後可從頁首「使用說明」再次開啟。</span><button className="btn primary" onClick={onClose}>{tab === 'quick' ? '開始使用' : '關閉說明'}</button></footer>
+    </section>
+  </div>;
+}
+
+function BrandHeader({ onOpenHelp }) {
   return (
     <>
       <a className="skip-link" href="#main">跳到主要內容</a>
       <header className="site-header">
         <div className="header-inner">
           <div className="brand-lockup"><img src="./polik-scheduler-mark.svg" alt="" width="44" height="44" /><span><strong>Polik Scheduler</strong><small>校務智慧排課</small></span></div>
-          <nav aria-label="網站導覽"><a href="https://polik18.github.io/">← Polik 專案總覽</a><a href="./">排課首頁</a></nav>
+          <nav aria-label="網站導覽"><button className="nav-help" onClick={onOpenHelp}>使用說明</button><a href="https://polik18.github.io/">← Polik 專案總覽</a><a href="./">排課首頁</a></nav>
         </div>
       </header>
     </>
