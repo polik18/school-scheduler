@@ -31,6 +31,7 @@ export default function App() {
   const [solveElapsed, setSolveElapsed] = useState(0);
   const workerRef = useRef(null);
   const solveStartedAt = useRef(0);
+  const helpOpenerRef = useRef(null);
 
   useEffect(() => {
     if (!solving) return undefined;
@@ -41,6 +42,11 @@ export default function App() {
   const closeHelp = useCallback(() => {
     try { localStorage.setItem('polik-scheduler-guide-seen', '1'); } catch { /* 無痕模式仍可關閉本次導覽 */ }
     setHelpOpen(false);
+    setTimeout(() => helpOpenerRef.current?.focus(), 0);
+  }, []);
+  const openHelp = useCallback(event => {
+    helpOpenerRef.current = event?.currentTarget || document.activeElement;
+    setHelpOpen(true);
   }, []);
 
   // 匯入檔案
@@ -192,7 +198,7 @@ export default function App() {
   if (!data) {
     return (
       <div className="site-shell">
-        <BrandHeader onOpenHelp={() => setHelpOpen(true)} />
+        <BrandHeader onOpenHelp={openHelp} />
         <main id="main" className="landing-main">
           <WelcomeScreen onImport={handleImport} error={error} />
         </main>
@@ -203,13 +209,13 @@ export default function App() {
   }
 
   if (data.kind === 'staffing') {
-    return <StaffingWorkspace data={data} status={status} error={error} onImport={handleImport} onOpenHelp={() => setHelpOpen(true)} helpOpen={helpOpen} onCloseHelp={closeHelp}
+    return <StaffingWorkspace data={data} status={status} error={error} onImport={handleImport} onOpenHelp={openHelp} helpOpen={helpOpen} onCloseHelp={closeHelp}
       onReset={() => { setData(null); setStatus(''); setError(''); }} />;
   }
 
   return (
     <div className="site-shell">
-      <BrandHeader onOpenHelp={() => setHelpOpen(true)} />
+      <BrandHeader onOpenHelp={openHelp} />
       <main id="main" className="app">
         <section className="workspace-heading">
           <div><p className="eyebrow">校務排課工作區</p><h1>校務智慧排課工作區</h1><p>依序完成資料驗證、限制設定、排課、診斷與輸出。</p></div>
@@ -299,7 +305,13 @@ function SolveProgress({ progress, elapsedMs }) {
   const placed = progress?.placed || 0;
   const total = progress?.total || 0;
   const percent = total ? Math.min(100, Math.round(placed / total * 100)) : 0;
-  return <div className="solve-progress" role="status" aria-live="polite">
+  const announceBucket = Math.floor(elapsedMs / 5000);
+  const [announcement, setAnnouncement] = useState('背景排課已開始，目前最佳方案正在建立。');
+  useEffect(() => {
+    setAnnouncement(`背景排課進行中，目前最佳方案已排入 ${placed} 節，共 ${total || 0} 節。`);
+  }, [announceBucket]);
+  return <div className="solve-progress">
+    <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
     <div className="solve-visual" aria-hidden="true">
       {Array.from({ length: 15 }, (_, index) => <span key={index} style={{ '--delay': `${index * 55}ms` }} />)}
     </div>
@@ -435,7 +447,14 @@ function TimetableGrid({ title, schedule, settings, lockMode, selectedLesson, fi
                   const index = cell ? schedule.schedule.indexOf(cell) : null;
                   const cellClass = [lockMode ? (cell ? 'editable' : 'drop-target') : '', index !== null && index === selectedLesson ? 'selected' : ''].filter(Boolean).join(' ');
                   return (
-                    <td key={d} className={cellClass} onClick={() => lockMode && onCellClick(index, { day: d, period })}>
+                    <td key={d} className={cellClass} role={lockMode ? 'button' : undefined} tabIndex={lockMode ? 0 : undefined}
+                      aria-label={lockMode ? (cell ? `${cell.subject}，星期${DAY_LABELS[d]}第 ${period} 節；按 Enter 選取` : `星期${DAY_LABELS[d]}第 ${period} 節空白時段`) : undefined}
+                      onClick={() => lockMode && onCellClick(index, { day: d, period })}
+                      onKeyDown={event => {
+                        if (lockMode && (event.key === 'Enter' || event.key === ' ')) {
+                          event.preventDefault(); onCellClick(index, { day: d, period });
+                        }
+                      }}>
                       {cell ? <div className="lesson-card" style={subjectColor(cell.subject)}><strong>{cell.subject}</strong><small>{filterField !== 'class' ? `班級 ${cell.class}` : `教師 ${cell.teacher}`}{cell.room_id ? ` · ${cell.room_id}` : ''}</small></div> : lockMode && selectedLesson !== null ? <span className="empty-hint">移至這裡</span> : null}
                     </td>
                   );
@@ -506,17 +525,27 @@ function WelcomeScreen({ onImport, error }) {
 function HelpCenter({ onClose }) {
   const [tab, setTab] = useState('quick');
   const closeRef = useRef(null);
+  const dialogRef = useRef(null);
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     closeRef.current?.focus();
-    const onKey = event => { if (event.key === 'Escape') onClose(); };
+    const onKey = event => {
+      if (event.key === 'Escape') { onClose(); return; }
+      if (event.key !== 'Tab') return;
+      const focusable = [...dialogRef.current.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter(element => !element.disabled && element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
     window.addEventListener('keydown', onKey);
     return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', onKey); };
   }, [onClose]);
   const tabs = [['quick','快速上手'], ['excel','Excel 欄位'], ['rules','限制與指標'], ['errors','常見問題']];
   return <div className="help-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
-    <section className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <section ref={dialogRef} className="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
       <header className="help-header"><div><p className="eyebrow">使用教學</p><h2 id="help-title">排課工具使用說明</h2><p>從標準範本到結果檢查，所有資料都在目前瀏覽器處理。</p></div><button ref={closeRef} className="help-close" onClick={onClose} aria-label="關閉使用說明">×</button></header>
       <nav className="help-tabs" aria-label="使用說明章節">{tabs.map(([value,label]) => <button key={value} className={tab === value ? 'active' : ''} aria-pressed={tab === value} onClick={() => setTab(value)}>{label}</button>)}</nav>
       <div className="help-content">

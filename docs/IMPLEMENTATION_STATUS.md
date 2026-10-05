@@ -21,6 +21,7 @@
 - `npm run test:capacity`：72 班於 5 秒壓力上限觸發 timeout，保留無硬衝突部分結果。
 - `npm run test:e2e`：Chrome 下載→上傳→1,620 節排課、取消、配置簿與匯出 PASS。
 - `npm run test:capacity`：72 班、1,740 節、0 pending，本機約 1–3 秒。
+- `npm run test:visual`：核心文字對比 ≥ 4.5:1；360／768／1440px 首頁、結果、列印模式與水平溢位門禁 PASS。
 - 隱私掃描：公開範本 7 張工作表的原始／遮蔽姓名命中數為 0。
 
 ## 尚待

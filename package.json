@@ -12,6 +12,7 @@
     "test:capacity": "node scripts/verify-capacity.mjs",
     "test:e2e": "npm run build && node scripts/e2e-browser.mjs",
     "test:e2e:live": "node scripts/e2e-browser.mjs https://polik18.github.io/school-scheduler/",
+    "test:visual": "npm run build && node scripts/visual-audit.mjs",
     "build:template": "node scripts/build-standard-template.mjs"
   },
   "dependencies": {

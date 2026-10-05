@@ -72,6 +72,7 @@ npm run test:template # 60 班、1620 節課綱擬真標準範本
 npm run test:capacity # 72 班超時／部分結果壓力門禁
 npm run test:e2e      # Chrome 匯入、排課、取消與匯出流程
 npm run test:e2e:live # 對正式 GitHub Pages 執行同一流程
+npm run test:visual   # 文字對比、360/768/1440px、水平溢位與列印截圖門禁
 ```
 
 `test:e2e` 預設使用系統 Chrome；如果不在標準安裝路徑，請設定 `PLAYWRIGHT_CHROME_PATH`。

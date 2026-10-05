@@ -35,6 +35,9 @@ async function dismissGuide(page) {
   const dialog = page.getByRole('dialog', { name: '排課工具使用說明' });
   if (await dialog.count() && await dialog.isVisible()) {
     assert(await dialog.getByRole('heading', { name: '下載標準範本' }).isVisible(), '首次使用導覽內容未顯示');
+    assert(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')) === '關閉使用說明', '導覽開啟後焦點未移入對話框');
+    await page.keyboard.press('Shift+Tab');
+    assert(await page.evaluate(() => document.activeElement?.textContent?.trim()) === '開始使用', '對話框焦點未循環至最後一個按鈕');
     await dialog.getByRole('button', { name: '開始使用' }).click();
   }
 }
@@ -51,7 +54,9 @@ try {
   await page.getByRole('button', { name: '使用說明' }).click();
   await page.getByRole('button', { name: 'Excel 欄位' }).click();
   assert(await page.getByRole('cell', { name: '教師可排時段' }).isVisible(), 'Excel 欄位說明未顯示');
-  await page.getByRole('button', { name: '關閉使用說明' }).click();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === '使用說明');
+  assert(await page.evaluate(() => document.activeElement?.textContent?.trim()) === '使用說明', '關閉說明後焦點未回到開啟按鈕');
   const templateLinks = page.getByRole('link', { name: /\u4e0b\u8f09\u6a19\u6e96\u7bc4\u672c/ });
   assert(await templateLinks.count() === 1, '首頁應只有一個標準範本下載入口');
   const demoHref = await templateLinks.first().getAttribute('href');
@@ -66,9 +71,11 @@ try {
   await page.locator('input[type=file]').first().setInputFiles(scheduleFile);
   await page.getByRole('status').filter({ hasText: '匯入完成：136 師 / 60 班 / 580 課' }).waitFor({ timeout: 15000 });
   assert(await page.getByText('資料格式與必要欄位均已通過驗證。').isVisible(), '標準範本未通過驗證');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.getByRole('button', { name: '執行智慧排課 →' }).click();
   await page.getByRole('button', { name: '取消排課' }).waitFor({ timeout: 5000 });
   await page.getByRole('status').filter({ hasText: '目前最佳方案' }).waitFor({ timeout: 5000 });
+  assert(await page.locator('.solve-visual span').first().evaluate(element => getComputedStyle(element).animationName === 'none'), '減少動態模式仍執行排課動畫');
   await page.getByRole('status').filter({ hasText: '排課成功' }).waitFor({ timeout: 45000 });
   const stats = await page.locator('.result-stats > div').allTextContents();
   assert(stats.some(x => x.includes('100%') && x.includes('排入完成率')), `完成率不是 100%：${stats.join(' | ')}`);
@@ -78,6 +85,13 @@ try {
   await page.getByRole('searchbox', { name: '搜尋班級' }).fill('110');
   await page.getByRole('heading', { name: '班級 110' }).waitFor();
   assert(await page.locator('.timetable-card').count() === 1, '搜尋後仍應只渲染一張課表');
+  await page.getByRole('checkbox', { name: '人工調課' }).check();
+  const keyboardLesson = page.locator('.timetable td.editable').first();
+  await keyboardLesson.focus();
+  await page.keyboard.press('Enter');
+  assert(await page.locator('.timetable td.selected').count() === 1, '鍵盤 Enter 無法選取人工調課課程');
+  await page.keyboard.press('Enter');
+  assert(await page.locator('.timetable td.selected').count() === 0, '鍵盤 Enter 無法取消人工調課選取');
   const [staffingDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '匯出教職員配置' }).click()
